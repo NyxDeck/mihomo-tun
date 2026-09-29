@@ -15,7 +15,7 @@ import time
 from pathlib import Path
 
 
-PROVIDER_NAME = "noctalia-direct"
+PROVIDER_NAME = "nyxdeck-direct"
 RULE_LINE = "  - RULE-SET,%s,DIRECT" % PROVIDER_NAME
 START = "# BEGIN Mihomo TUN Control direct exclusions"
 END = "# END Mihomo TUN Control direct exclusions"
@@ -183,7 +183,7 @@ def main():
         return
 
     backup = config_path.with_name(
-        config_path.name + ".bak.noctalia-direct." + time.strftime("%Y%m%d_%H%M%S")
+        config_path.name + ".bak.nyxdeck-direct." + time.strftime("%Y%m%d_%H%M%S")
     )
     shutil.copy2(config_path, backup)
     mode = config_path.stat().st_mode & 0o777

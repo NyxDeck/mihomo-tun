@@ -45,9 +45,9 @@ PLUGIN_DATA_DIR = os.environ.get("MIHOMO_PLUGIN_DATA_DIR") or default_plugin_dat
 DIRECT_STORE = os.path.join(PLUGIN_DATA_DIR, "direct-rules.json")
 SUBSCRIPTION_OP_FILE = os.path.join(PLUGIN_DATA_DIR, "subscription-op.json")
 DIRECT_PROVIDER_FILE = os.environ.get(
-    "MIHOMO_DIRECT_RULES_FILE", "/etc/mihomo/noctalia/direct-rules.yaml"
+    "MIHOMO_DIRECT_RULES_FILE", "/etc/mihomo/direct-rules/direct-rules.yaml"
 )
-DIRECT_PROVIDER_NAME = "noctalia-direct"
+DIRECT_PROVIDER_NAME = "nyxdeck-direct"
 # 出口 IP 回显端点，按顺序尝试（境外域名，确保会被规则送进代理）
 IP_ECHOES = [
     "https://ipinfo.io/ip",

@@ -161,7 +161,7 @@ def main():
     updated = "\n".join(lines) + "\n"
 
     backup = config_path.with_name(
-        config_path.name + ".bak.noctalia-subscription." + time.strftime("%Y%m%d_%H%M%S")
+        config_path.name + ".bak.nyxdeck-subscription." + time.strftime("%Y%m%d_%H%M%S")
     )
     shutil.copy2(config_path, backup)
     mode = config_path.stat().st_mode & 0o777
