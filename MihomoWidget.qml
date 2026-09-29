@@ -3,8 +3,9 @@ import Quickshell
 import Quickshell.Io
 import qs.Common
 import qs.Modules.Plugins
+import qs.Widgets
 
-// Bar pill: a status-coloured shield glyph plus, optionally, the selected node.
+// Bar pill: a status-coloured routing glyph plus, optionally, the selected node.
 // Left click opens the popout panel (DMS default for a plugin with popoutContent).
 PluginComponent {
     id: root
@@ -67,12 +68,11 @@ PluginComponent {
             anchors.centerIn: parent
             spacing: Theme.spacingXS
 
-            Text {
+            DankIcon {
                 anchors.verticalCenter: parent.verticalCenter
-                text: "\u{F132}"  // fa-shield
+                name: "swap_horiz"
+                size: Theme.iconSize
                 color: root.active ? Theme.primary : Theme.widgetIconColor
-                font.family: "JetBrainsMono Nerd Font"
-                font.pixelSize: Theme.fontSizeMedium + 4
             }
 
             Text {
