@@ -95,8 +95,8 @@ PluginComponent {
         PillContent {}
     }
 
-    popoutWidth: 430
-    popoutHeight: 580
+    popoutWidth: 440
+    popoutHeight: 620
     popoutContent: Component {
         MihomoPanel {}
     }
