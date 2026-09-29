@@ -21,92 +21,30 @@ Item {
     property var closePopout: null
     property var parentPopout: null
 
-    // ── i18n ─────────────────────────────────────────────────────────────────
-    readonly property bool zh: (Qt.locale().name || "").toLowerCase().indexOf("zh") === 0
-    readonly property var strings: ({
-        running: ["代理已开启", "Proxy is ON"],
-        stopped: ["代理已关闭", "Proxy is OFF"],
-        unknown: ["未知", "unknown"],
-        start: ["开启", "Turn on"],
-        stop: ["关闭", "Turn off"],
-        exitIp: ["出口 IP", "Exit IP"],
-        check: ["检测", "Check"],
-        mode: ["模式", "Mode"],
-        mRule: ["规则", "Rule"],
-        mGlobal: ["全局", "Global"],
-        mDirect: ["直连", "Direct"],
-        groups: ["策略组", "Policy groups"],
-        nodes: ["节点", "Nodes"],
-        loading: ["加载中…", "Loading…"],
-        refresh: ["刷新", "Refresh"],
-        noNodes: ["该分组没有可切换的节点", "No selectable nodes in this group"],
-        truncated: ["仅显示前 %1 个", "Only the first %1 entries are listed"],
-        testDelay: ["延迟测试", "Test latency"],
-        delayDone: ["已测 %1 个节点", "Tested %1 nodes"],
-        delayBest: ["，最快 %1 ms", ", best %1 ms"],
-        webPanel: ["Web 面板", "Web panel"],
-        webPanelHint: ["未检测到本地控制面板，点按将打开在线面板并把密钥放进剪贴板", "No local dashboard found; opens the hosted dashboard and copies the secret"],
-        hostedPanelOpened: ["已打开在线面板，密钥在剪贴板里，粘贴即可连接", "Hosted dashboard opened; the secret is in your clipboard"],
-        copySecret: ["复制密钥", "Copy secret"],
-        updateProvider: ["更新订阅", "Update subscription"],
-        navMain: ["概览", "Overview"],
-        navSubs: ["订阅", "Subscriptions"],
-        navDirect: ["直连", "Direct rules"],
-        updateAll: ["全部更新", "Update all"],
-        addSubscription: ["添加订阅", "Add subscription"],
-        noProviders: ["没有配置 HTTP 订阅", "No HTTP subscription providers are configured"],
-        name: ["名称", "Name"],
-        url: ["订阅地址", "Subscription URL"],
-        save: ["保存", "Save"],
-        cancel: ["取消", "Cancel"],
-        edit: ["修改", "Edit"],
-        update: ["更新", "Update"],
-        remove: ["移除", "Remove"],
-        delete: ["删除", "Delete"],
-        confirmDelete: ["确认删除", "Confirm delete"],
-        updatedAt: ["更新于 %1", "Updated %1"],
-        neverUpdated: ["从未更新", "Never updated"],
-        nodeCount: ["%1 个节点", "%1 nodes"],
-        quotaUnknown: ["用量未知", "Quota unavailable"],
-        expires: ["%1 到期", "Expires %1"],
-        directRules: ["国内直连规则", "Domestic direct rules"],
-        directHelp: ["这里添加的域名和 IP 会先于代理规则匹配并直连。", "Domains and IPs added here are matched before proxy rules and sent DIRECT."],
-        directPlaceholder: ["example.com 或 203.0.113.7/24", "example.com or 203.0.113.7/24"],
-        addDirect: ["添加直连", "Add direct rule"],
-        directEmpty: ["还没有直连规则", "No direct rules yet"],
-        configured: ["直连 Provider 已生效", "Direct-rule provider is active"],
-        notConfigured: ["还需要执行一次性初始化", "One-time setup is still required"],
-        copySetup: ["复制初始化命令", "Copy setup command"],
-        clearAll: ["清空", "Clear all"],
-        copied: ["已复制到剪贴板", "Copied to clipboard"],
-        needFields: ["名称和地址都要填", "Name and URL are required"],
-        working: ["处理中…", "Working…"]
-    })
-    function tr(key, subst) {
-        const pair = strings[key];
-        let text = pair ? (zh ? pair[0] : pair[1]) : key;
-        if (subst !== undefined)
-            text = text.replace("%1", subst);
-        return text;
+    // Terms are the English text; translations/zh_CN.json carries the other
+    // languages. I18n.trFor falls back to the DMS catalogue, then to the term.
+    function tr(term, subst) {
+        const text = I18n.trFor("mihomoTun", term);
+        return subst === undefined ? text : text.replace("%1", subst);
     }
     function localeDate(value) {
         if (!value)
-            return tr("neverUpdated");
+            return tr("Never updated");
         const date = new Date(value);
         if (isNaN(date.getTime()))
-            return tr("neverUpdated");
-        return tr("updatedAt", Qt.formatDateTime(date, "yyyy-MM-dd HH:mm"));
+            return tr("Never updated");
+        return tr("Updated %1", Qt.formatDateTime(date, "yyyy-MM-dd HH:mm"));
     }
     function quotaText(sub) {
         const total = sub.total ?? 0;
         if (!total)
-            return tr("quotaUnknown");
+            return tr("Quota unavailable");
         const gib = 1024 * 1024 * 1024;
         const used = (sub.upload ?? 0) + (sub.download ?? 0);
         let text = (used / gib).toFixed(1) + " / " + (total / gib).toFixed(1) + " GiB";
         const expire = sub.expire ?? 0;
         if (expire > 0)
-            text += "  ·  " + tr("expires", Qt.formatDate(new Date(expire * 1000), "yyyy-MM-dd"));
+            text += "  ·  " + tr("Expires %1", Qt.formatDate(new Date(expire * 1000), "yyyy-MM-dd"));
         return text;
     }
 
@@ -268,9 +206,9 @@ Item {
                     if (panel.pendingWebFallback) {
                         panel.pendingWebFallback = false;
                         Qt.openUrlExternally("https://metacubex.github.io/metacubexd/#/setup?hostname=" + panel.controllerHost.host + "&port=" + panel.controllerHost.port);
-                        panel.say(panel.tr("hostedPanelOpened"), false);
+                        panel.say(panel.tr("Hosted dashboard opened; the secret is in your clipboard"), false);
                     } else {
-                        panel.say(panel.tr("copied"), false);
+                        panel.say(panel.tr("Copied to clipboard"), false);
                     }
                     return;
                 }
@@ -283,7 +221,7 @@ Item {
                             best = item.delay;
                     }
                     panel.delayMap = map;
-                    panel.say(panel.tr("delayDone", r.results.length) + (best != null ? panel.tr("delayBest", best) : ""), false);
+                    panel.say(panel.tr("Tested %1 nodes", r.results.length) + (best != null ? panel.tr(", best %1 ms", best) : ""), false);
                     return;
                 }
                 if (r.ip) {
@@ -447,13 +385,13 @@ Item {
                 }
             }
             StyledText {
-                text: panel.active ? panel.tr("running") : (panel.snap.service ? panel.tr("stopped") : panel.tr("unknown"))
+                text: panel.active ? panel.tr("Proxy is ON") : (panel.snap.service ? panel.tr("Proxy is OFF") : panel.tr("unknown"))
                 font.pixelSize: Theme.fontSizeSmall
                 color: panel.active ? Theme.primary : Theme.surfaceVariantText
                 Layout.alignment: Qt.AlignVCenter
             }
             Chip {
-                label: panel.active ? panel.tr("stop") : panel.tr("start")
+                label: panel.active ? panel.tr("Turn off") : panel.tr("Turn on")
                 icon: "power_settings_new"
                 active: panel.active
                 Layout.alignment: Qt.AlignVCenter
@@ -469,7 +407,7 @@ Item {
             checkEnabled: false
             minButtonWidth: Math.floor((parent.width - Theme.spacingS - 4) / 3)
             currentIndex: panel.page
-            model: [panel.tr("navMain"), panel.tr("navSubs"), panel.tr("navDirect")]
+            model: [panel.tr("Overview"), panel.tr("Subscriptions"), panel.tr("Direct rules")]
             onSelectionChanged: (index, selected) => {
                 if (!selected || index < 0)
                     return;
@@ -490,7 +428,7 @@ Item {
                 spacing: Theme.spacingS
 
                 FieldLabel {
-                    text: panel.tr("exitIp")
+                    text: panel.tr("Exit IP")
                 }
                 StyledText {
                     text: panel.ipText.length > 0 ? panel.ipText : "—"
@@ -500,7 +438,7 @@ Item {
                     elide: Text.ElideRight
                 }
                 Chip {
-                    label: panel.tr("check")
+                    label: panel.tr("Check")
                     icon: "public"
                     onTapped: panel.run(["ip"])
                 }
@@ -511,7 +449,7 @@ Item {
                 spacing: Theme.spacingS
 
                 FieldLabel {
-                    text: panel.tr("mode")
+                    text: panel.tr("Mode")
                 }
                 DankFilterChips {
                     width: parent.width
@@ -519,15 +457,15 @@ Item {
                     model: [
                         {
                             "value": "rule",
-                            "label": panel.tr("mRule")
+                            "label": panel.tr("Rule")
                         },
                         {
                             "value": "global",
-                            "label": panel.tr("mGlobal")
+                            "label": panel.tr("Global")
                         },
                         {
                             "value": "direct",
-                            "label": panel.tr("mDirect")
+                            "label": panel.tr("Direct")
                         }
                     ]
                     currentIndex: ["rule", "global", "direct"].indexOf(panel.snap.mode ?? "")
@@ -540,7 +478,7 @@ Item {
                 spacing: Theme.spacingS
 
                 FieldLabel {
-                    text: panel.tr("groups")
+                    text: panel.tr("Policy groups")
                 }
                 DankFilterChips {
                     width: parent.width
@@ -563,18 +501,18 @@ Item {
                     spacing: Theme.spacingS
 
                     FieldLabel {
-                        text: panel.tr("nodes")
+                        text: panel.tr("Nodes")
                         Layout.fillWidth: true
                     }
                     StyledText {
                         visible: panel.nodes.length === 0
-                        text: panel.snap.ok === undefined ? panel.tr("loading") : panel.tr("noNodes")
+                        text: panel.snap.ok === undefined ? panel.tr("Loading…") : panel.tr("No selectable nodes in this group")
                         font.pixelSize: Theme.fontSizeSmall
                         color: Theme.surfaceVariantText
                     }
                     Chip {
                         visible: panel.nodes.length > 0
-                        label: panel.tr("testDelay")
+                        label: panel.tr("Test latency")
                         icon: "speed"
                         onTapped: panel.run(["delay", panel.group])
                     }
@@ -634,7 +572,7 @@ Item {
 
                 StyledText {
                     visible: panel.snap.truncated === true
-                    text: panel.tr("truncated", SettingsData.getPluginSetting("mihomoTun", "max_nodes", 80))
+                    text: panel.tr("Only the first %1 entries are listed", SettingsData.getPluginSetting("mihomoTun", "max_nodes", 80))
                     font.pixelSize: Theme.fontSizeSmall
                     color: Theme.surfaceVariantText
                 }
@@ -645,17 +583,17 @@ Item {
                 spacing: Theme.spacingS
 
                 Chip {
-                    label: panel.tr("updateProvider")
+                    label: panel.tr("Update subscription")
                     icon: "sync"
                     onTapped: panel.run(["provider-update", "all"])
                 }
                 Chip {
-                    label: panel.tr("webPanel")
+                    label: panel.tr("Web panel")
                     icon: "open_in_new"
                     onTapped: panel.openWebPanel()
                 }
                 Chip {
-                    label: panel.tr("copySecret")
+                    label: panel.tr("Copy secret")
                     icon: "content_copy"
                     onTapped: panel.run(["secret"])
                 }
@@ -663,7 +601,7 @@ Item {
 
             StyledText {
                 visible: panel.uiChecked && !panel.uiReady
-                text: panel.tr("webPanelHint")
+                text: panel.tr("No local dashboard found; opens the hosted dashboard and copies the secret")
                 font.pixelSize: Theme.fontSizeSmall
                 color: Theme.surfaceVariantText
                 width: parent.width
@@ -680,12 +618,12 @@ Item {
                 spacing: Theme.spacingS
 
                 FieldLabel {
-                    text: panel.tr("navSubs")
+                    text: panel.tr("Subscriptions")
                     Layout.fillWidth: true
                 }
                 Chip {
                     visible: panel.providers.length > 0
-                    label: panel.tr("updateAll")
+                    label: panel.tr("Update all")
                     icon: "sync"
                     onTapped: panel.run(["provider-update", "all"])
                 }
@@ -693,7 +631,7 @@ Item {
 
             StyledText {
                 visible: panel.providers.length === 0
-                text: panel.tr("noProviders")
+                text: panel.tr("No HTTP subscription providers are configured")
                 font.pixelSize: Theme.fontSizeSmall
                 color: Theme.surfaceVariantText
             }
@@ -736,12 +674,12 @@ Item {
                                     elide: Text.ElideRight
                                 }
                                 Chip {
-                                    label: panel.tr("update")
+                                    label: panel.tr("Update")
                                     icon: "sync"
                                     onTapped: panel.run(["provider-update", providerRow.modelData.name])
                                 }
                                 Chip {
-                                    label: panel.tr("edit")
+                                    label: panel.tr("Edit")
                                     icon: "edit"
                                     onTapped: {
                                         panel.editingName = providerRow.modelData.name;
@@ -752,7 +690,7 @@ Item {
                                     }
                                 }
                                 Chip {
-                                    label: panel.pendingDelete === ("del:" + providerRow.modelData.name) ? panel.tr("confirmDelete") : panel.tr("delete")
+                                    label: panel.pendingDelete === ("del:" + providerRow.modelData.name) ? panel.tr("Confirm delete") : panel.tr("Delete")
                                     icon: "delete"
                                     danger: true
                                     onTapped: {
@@ -762,7 +700,7 @@ Item {
                                 }
                             }
                             StyledText {
-                                text: panel.tr("nodeCount", providerRow.modelData.node_count ?? 0) + "  ·  " + panel.quotaText(providerRow.sub)
+                                text: panel.tr("%1 nodes", providerRow.modelData.node_count ?? 0) + "  ·  " + panel.quotaText(providerRow.sub)
                                 font.pixelSize: Theme.fontSizeSmall
                                 color: Theme.surfaceVariantText
                                 elide: Text.ElideRight
@@ -787,28 +725,28 @@ Item {
                 visible: false
 
                 FieldLabel {
-                    text: panel.editingName.length > 0 ? panel.tr("edit") + " · " + panel.editingName : panel.tr("addSubscription")
+                    text: panel.editingName.length > 0 ? panel.tr("Edit") + " · " + panel.editingName : panel.tr("Add subscription")
                 }
                 DankTextField {
                     id: subNameField
                     width: parent.width
-                    placeholderText: panel.tr("name")
+                    placeholderText: panel.tr("Name")
                 }
                 DankTextField {
                     id: subUrlField
                     width: parent.width
-                    placeholderText: panel.tr("url")
+                    placeholderText: panel.tr("Subscription URL")
                 }
                 RowLayout {
                     spacing: Theme.spacingS
 
                     Chip {
-                        label: panel.tr("save")
+                        label: panel.tr("Save")
                         icon: "check"
                         active: true
                         onTapped: {
                             if (subNameField.text.length === 0 || subUrlField.text.length === 0) {
-                                panel.say(panel.tr("needFields"), true);
+                                panel.say(panel.tr("Name and URL are required"), true);
                                 return;
                             }
                             panel.run(["subscription-upsert", subNameField.text, subUrlField.text, panel.editingName]);
@@ -819,7 +757,7 @@ Item {
                         }
                     }
                     Chip {
-                        label: panel.tr("cancel")
+                        label: panel.tr("Cancel")
                         icon: "close"
                         onTapped: {
                             subNameField.text = "";
@@ -833,7 +771,7 @@ Item {
 
             Chip {
                 visible: !subForm.visible
-                label: panel.tr("addSubscription")
+                label: panel.tr("Add subscription")
                 icon: "add"
                 onTapped: {
                     panel.editingName = "";
@@ -850,10 +788,10 @@ Item {
             visible: panel.page === 2
 
             FieldLabel {
-                text: panel.tr("directRules")
+                text: panel.tr("Domestic direct rules")
             }
             StyledText {
-                text: panel.tr("directHelp")
+                text: panel.tr("Domains and IPs added here are matched before proxy rules and sent DIRECT.")
                 font.pixelSize: Theme.fontSizeSmall
                 color: Theme.surfaceVariantText
                 width: parent.width
@@ -871,7 +809,7 @@ Item {
                     Layout.alignment: Qt.AlignVCenter
                 }
                 StyledText {
-                    text: panel.directConfigured ? panel.tr("configured") : panel.tr("notConfigured")
+                    text: panel.directConfigured ? panel.tr("Direct-rule provider is active") : panel.tr("One-time setup is still required")
                     font.pixelSize: Theme.fontSizeSmall
                     color: panel.directConfigured ? Theme.primary : Theme.error
                     Layout.fillWidth: true
@@ -879,18 +817,18 @@ Item {
                 }
                 Chip {
                     visible: !panel.directConfigured
-                    label: panel.tr("copySetup")
+                    label: panel.tr("Copy setup command")
                     icon: "content_copy"
                     onTapped: {
                         panel.copyText(panel.direct.setup_command ?? "");
-                        panel.say(panel.tr("copied"), false);
+                        panel.say(panel.tr("Copied to clipboard"), false);
                     }
                 }
             }
 
             StyledText {
                 visible: panel.directEntries.length === 0
-                text: panel.tr("directEmpty")
+                text: panel.tr("No direct rules yet")
                 font.pixelSize: Theme.fontSizeSmall
                 color: Theme.surfaceVariantText
             }
@@ -939,7 +877,7 @@ Item {
                             color: Theme.surfaceVariantText
                         }
                         Chip {
-                            label: panel.pendingDelete === ("rule:" + modelData.id) ? panel.tr("confirmDelete") : panel.tr("remove")
+                            label: panel.pendingDelete === ("rule:" + modelData.id) ? panel.tr("Confirm delete") : panel.tr("Remove")
                             icon: "delete"
                             danger: true
                             onTapped: {
@@ -954,14 +892,14 @@ Item {
             DankTextField {
                 id: directField
                 width: parent.width
-                placeholderText: panel.tr("directPlaceholder")
+                placeholderText: panel.tr("example.com or 203.0.113.7/24")
             }
             RowLayout {
                 width: parent.width
                 spacing: Theme.spacingS
 
                 Chip {
-                    label: panel.tr("addDirect")
+                    label: panel.tr("Add direct rule")
                     icon: "add"
                     active: true
                     onTapped: {
@@ -972,13 +910,13 @@ Item {
                     }
                 }
                 Chip {
-                    label: panel.tr("refresh")
+                    label: panel.tr("Refresh")
                     icon: "sync"
                     onTapped: panel.run(["direct-sync"])
                 }
                 Chip {
                     visible: panel.directEntries.length > 0
-                    label: panel.pendingDelete === "clear" ? panel.tr("confirmDelete") : panel.tr("clearAll")
+                    label: panel.pendingDelete === "clear" ? panel.tr("Confirm delete") : panel.tr("Clear all")
                     icon: "delete_sweep"
                     danger: true
                     onTapped: {
@@ -992,7 +930,7 @@ Item {
         // status line
         StyledText {
             width: parent.width
-            text: panel.busy ? panel.tr("working") : panel.toastText
+            text: panel.busy ? panel.tr("Working…") : panel.toastText
             font.pixelSize: Theme.fontSizeSmall
             color: Theme.surfaceVariantText
             elide: Text.ElideRight

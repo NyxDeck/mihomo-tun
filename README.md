@@ -8,6 +8,8 @@ IP. It also carries the full install and configuration flow.
 A port of the earlier [mihomo-tun](https://github.com/matsuzaka-yuki/mihomo-tun)
 plugin (MIT). The Python helper is reused unchanged; the UI is native to DMS.
 
+![Mihomo TUN panel](screenshot.png)
+
 ## What it does
 
 - Install mihomo and write a TUN-capable `/etc/mihomo/config.yaml`, the
@@ -102,6 +104,17 @@ python3 scripts/mihomo-ctl.py ip
 - Subscription edits change the root-owned mihomo config; the panel asks
   `pkexec` for a one-time authorization, validates the candidate config, and
   restarts mihomo.
+
+## Languages
+
+The panel and the settings page follow DMS' own language setting. English is the
+source text written into the QML; other languages live in `translations/`, one
+flat `{"Term": {"Term": "Translation"}}` map per locale, which DMS loads when it
+discovers the plugin. A term with no entry falls back to the English text, so a
+partial translation is fine.
+
+`zh_CN.json` ships with the plugin. To add another language, copy it, translate
+the values and name the file after the locale (`fr.json`, `pt_BR.json`, ...).
 
 ## Credits & license
 

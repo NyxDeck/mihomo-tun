@@ -9,50 +9,50 @@ PluginSettings {
 
     StringSetting {
         settingKey: "controller"
-        label: "Controller"
-        description: "Mihomo external controller URL."
+        label: I18n.trFor("mihomoTun", "Controller")
+        description: I18n.trFor("mihomoTun", "Mihomo external controller URL.")
         defaultValue: "http://127.0.0.1:9090"
     }
     StringSetting {
         settingKey: "secret_file"
-        label: "Secret file"
-        description: "Local file with the controller secret (never stored here)."
+        label: I18n.trFor("mihomoTun", "Secret file")
+        description: I18n.trFor("mihomoTun", "Local file with the controller secret (never stored here).")
         defaultValue: "/etc/mihomo/.controller-secret"
     }
     StringSetting {
         settingKey: "unit"
-        label: "systemd unit"
-        description: "Unit controlled by start / stop."
+        label: I18n.trFor("mihomoTun", "systemd unit")
+        description: I18n.trFor("mihomoTun", "Unit controlled by start / stop.")
         defaultValue: "mihomo.service"
     }
     StringSetting {
         settingKey: "config_file"
-        label: "Config file"
-        description: "Mihomo config.yaml (used by the one-time DIRECT rule setup)."
+        label: I18n.trFor("mihomoTun", "Config file")
+        description: I18n.trFor("mihomoTun", "Mihomo config.yaml (used by the one-time DIRECT rule setup).")
         defaultValue: "/etc/mihomo/config.yaml"
     }
     StringSetting {
         settingKey: "python_bin"
-        label: "Python"
-        description: "Interpreter that runs the helper."
+        label: I18n.trFor("mihomoTun", "Python")
+        description: I18n.trFor("mihomoTun", "Interpreter that runs the helper.")
         defaultValue: "python3"
     }
     StringSetting {
         settingKey: "refresh_ms"
-        label: "Refresh (ms)"
-        description: "Status polling interval."
+        label: I18n.trFor("mihomoTun", "Refresh (ms)")
+        description: I18n.trFor("mihomoTun", "Status polling interval.")
         defaultValue: "5000"
     }
     StringSetting {
         settingKey: "max_nodes"
-        label: "Max nodes"
-        description: "Maximum nodes returned to the panel."
+        label: I18n.trFor("mihomoTun", "Max nodes")
+        description: I18n.trFor("mihomoTun", "Maximum nodes returned to the panel.")
         defaultValue: "80"
     }
     ToggleSetting {
         settingKey: "show_label"
-        label: "Show node label"
-        description: "Show the selected node beside the bar glyph."
+        label: I18n.trFor("mihomoTun", "Show node label")
+        description: I18n.trFor("mihomoTun", "Show the selected node beside the bar glyph.")
         defaultValue: true
     }
 }
