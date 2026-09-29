@@ -1,0 +1,19 @@
+{
+    "$schema": "https://raw.githubusercontent.com/AvengeMedia/DankMaterialShell/master/quickshell/PLUGINS/plugin-schema.json",
+    "id": "mihomoTun",
+    "name": "Mihomo TUN",
+    "description": "Control a local systemd-managed mihomo TUN service: start/stop, mode, proxy groups and nodes, subscriptions, DIRECT rules, and exit IP. Ported from the Noctalia mihomo-tun plugin.",
+    "version": "1.0.0",
+    "author": "NyxDeck",
+    "type": "composite",
+    "capabilities": ["daemon", "dankbar-widget"],
+    "components": {
+        "daemon": "./MihomoService.qml",
+        "widget": "./MihomoWidget.qml"
+    },
+    "settings": "./MihomoSettings.qml",
+    "icon": "shield-lock",
+    "requires_dms": ">=1.6.1",
+    "dependencies": ["python3", "mihomo"],
+    "permissions": ["settings_read", "settings_write", "process"]
+}
