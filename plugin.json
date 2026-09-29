@@ -12,7 +12,7 @@
         "widget": "./MihomoWidget.qml"
     },
     "settings": "./MihomoSettings.qml",
-    "icon": "vpn_lock",
+    "icon": "swap_horiz",
     "requires_dms": ">=1.6.1",
     "dependencies": ["python3", "mihomo"],
     "permissions": ["settings_read", "settings_write", "process"]
