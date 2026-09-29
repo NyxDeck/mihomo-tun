@@ -7,10 +7,8 @@ import qs.Services
 import qs.Widgets
 
 // Popout content for the mihomoTun plugin.
-//
-// Written for people who just want their proxy to work: every section carries a
-// plain-language label and, where the concept is not obvious, a one-line hint.
-// Overview / Subscriptions / Direct rules mirror the original plugin's pages.
+// Layout mirrors Noctalia's mihomo-tun panel: Overview / Subscriptions / Direct rules,
+// built from DMS' own widgets so it matches the shell.
 Item {
     id: panel
 
@@ -26,92 +24,62 @@ Item {
     // ── i18n ─────────────────────────────────────────────────────────────────
     readonly property bool zh: (Qt.locale().name || "").toLowerCase().indexOf("zh") === 0
     readonly property var strings: ({
-        title: ["网络代理", "Network proxy"],
-        product: ["Mihomo TUN", "Mihomo TUN"],
-        running: ["已开启", "On"],
-        stopped: ["已关闭", "Off"],
-        unknown: ["状态未知", "Unknown"],
-        start: ["开启代理", "Turn on"],
-        stop: ["关闭代理", "Turn off"],
-
-        navMain: ["总览", "Overview"],
-        navSubs: ["订阅", "Subscriptions"],
-        navDirect: ["直连规则", "Direct rules"],
-
-        exitIp: ["出口 IP 地址", "Exit IP"],
-        exitIpHint: ["你上网时网站看到的地址；开启代理后应该变成节点所在地",
-                     "The address websites see. With the proxy on it becomes the node's location."],
-        check: ["查询", "Check"],
-
-        mode: ["代理模式", "Proxy mode"],
+        running: ["代理已开启", "Proxy is ON"],
+        stopped: ["代理已关闭", "Proxy is OFF"],
+        unknown: ["未知", "unknown"],
+        start: ["开启", "Turn on"],
+        stop: ["关闭", "Turn off"],
+        exitIp: ["出口 IP", "Exit IP"],
+        check: ["检测", "Check"],
+        mode: ["模式", "Mode"],
         mRule: ["规则", "Rule"],
         mGlobal: ["全局", "Global"],
         mDirect: ["直连", "Direct"],
-        modeHintRule: ["按规则自动分流：国内直连，其它走代理（推荐）",
-                       "Split automatically: domestic sites direct, everything else proxied (recommended)"],
-        modeHintGlobal: ["所有流量都走代理", "Everything goes through the proxy"],
-        modeHintDirect: ["所有流量都不走代理", "Nothing goes through the proxy"],
-
-        groups: ["节点分组", "Node groups"],
-        groupsHint: ["不同类型的网站可以走不同的分组（比如视频站单独一组）",
-                     "Different kinds of sites can use different groups (a video-only group, say)"],
-
-        nodes: ["节点（线路）", "Nodes (lines)"],
-        nodesHint: ["点一下切换线路；先点「测速」再挑快的",
-                    "Tap to switch. Tap Test latency first, then pick a fast one"],
-        loading: ["正在读取…", "Loading…"],
-        noNodes: ["这个分组里没有可切换的节点", "No switchable nodes in this group"],
-        truncated: ["节点太多，只显示前 %1 个", "Only the first %1 nodes are listed"],
-        testDelay: ["测速", "Test latency"],
-        delayDone: ["已测速 %1 个节点", "Tested %1 nodes"],
-        delayBest: ["，最快 %1 毫秒", ", best %1 ms"],
-
-        webPanel: ["网页控制台", "Web console"],
-        copySecret: ["复制管理密钥", "Copy secret"],
+        groups: ["策略组", "Policy groups"],
+        nodes: ["节点", "Nodes"],
+        loading: ["加载中…", "Loading…"],
+        refresh: ["刷新", "Refresh"],
+        noNodes: ["该分组没有可切换的节点", "No selectable nodes in this group"],
+        truncated: ["仅显示前 %1 个", "Only the first %1 entries are listed"],
+        testDelay: ["延迟测试", "Test latency"],
+        delayDone: ["已测 %1 个节点", "Tested %1 nodes"],
+        delayBest: ["，最快 %1 ms", ", best %1 ms"],
+        webPanel: ["Web 面板", "Web panel"],
+        webPanelHint: ["未检测到本地控制面板，点按将打开在线面板并把密钥放进剪贴板", "No local dashboard found; opens the hosted dashboard and copies the secret"],
+        hostedPanelOpened: ["已打开在线面板，密钥在剪贴板里，粘贴即可连接", "Hosted dashboard opened; the secret is in your clipboard"],
+        copySecret: ["复制密钥", "Copy secret"],
         updateProvider: ["更新订阅", "Update subscription"],
-        webPanelHint: ["没有找到本机控制台；点它会打开在线控制台，并把管理密钥放进剪贴板",
-                       "No local console found; tapping opens the hosted one and copies the secret"],
-        hostedPanelOpened: ["已打开在线控制台，密钥在剪贴板里，粘贴即可连接",
-                            "Hosted console opened; the secret is in your clipboard"],
-
-        subsHint: ["订阅决定你能用哪些节点；更新后会拉到最新节点",
-                   "A subscription decides which nodes you get; updating pulls the latest ones"],
+        navMain: ["概览", "Overview"],
+        navSubs: ["订阅", "Subscriptions"],
+        navDirect: ["直连", "Direct rules"],
         updateAll: ["全部更新", "Update all"],
         addSubscription: ["添加订阅", "Add subscription"],
-        noProviders: ["还没有添加订阅，所以没有节点可用",
-                      "No subscription yet, so there are no nodes to use"],
-        name: ["名称（自己起）", "Name (anything you like)"],
-        url: ["订阅链接", "Subscription link"],
+        noProviders: ["没有配置 HTTP 订阅", "No HTTP subscription providers are configured"],
+        name: ["名称", "Name"],
+        url: ["订阅地址", "Subscription URL"],
         save: ["保存", "Save"],
         cancel: ["取消", "Cancel"],
-        edit: ["改名或换链接", "Edit"],
+        edit: ["修改", "Edit"],
         update: ["更新", "Update"],
         remove: ["移除", "Remove"],
         delete: ["删除", "Delete"],
-        confirmDelete: ["再点一次确认", "Tap again to confirm"],
+        confirmDelete: ["确认删除", "Confirm delete"],
         updatedAt: ["更新于 %1", "Updated %1"],
-        neverUpdated: ["还没有更新过", "Never updated"],
+        neverUpdated: ["从未更新", "Never updated"],
         nodeCount: ["%1 个节点", "%1 nodes"],
-        quotaUnknown: ["已用流量未知", "Usage unavailable"],
+        quotaUnknown: ["用量未知", "Quota unavailable"],
         expires: ["%1 到期", "Expires %1"],
-
-        directRules: ["直连规则", "Direct rules"],
-        directHelp: ["这里列的网站不走代理，直接连接。一般放国内网站、银行、局域网地址。",
-                     "Sites listed here skip the proxy. Usually domestic sites, banks, LAN addresses."],
-        directPlaceholder: ["例如 example.com 或 203.0.113.7/24", "e.g. example.com or 203.0.113.7/24"],
-        addDirect: ["添加", "Add"],
-        directEmpty: ["还没有添加直连规则", "No direct rules yet"],
-        configured: ["直连规则已生效", "Direct rules are active"],
-        notConfigured: ["直连规则还没初始化：复制下面的命令，在终端执行一次即可（只需一次）",
-                        "Direct rules are not set up yet: copy the command below and run it once in a terminal"],
-        copySetup: ["复制命令", "Copy command"],
-        clearAll: ["全部清空", "Clear all"],
-        copySetupDone: ["命令已复制，终端里粘贴执行一次即可",
-                        "Command copied; paste it into a terminal once"],
-        reload: ["重新加载", "Reload"],
-
-        copied: ["已复制到剪贴板", "Copied to the clipboard"],
-        needFields: ["名称和链接都要填", "Name and link are both required"],
+        directRules: ["国内直连规则", "Domestic direct rules"],
+        directHelp: ["这里添加的域名和 IP 会先于代理规则匹配并直连。", "Domains and IPs added here are matched before proxy rules and sent DIRECT."],
+        directPlaceholder: ["example.com 或 203.0.113.7/24", "example.com or 203.0.113.7/24"],
+        addDirect: ["添加直连", "Add direct rule"],
+        directEmpty: ["还没有直连规则", "No direct rules yet"],
+        configured: ["直连 Provider 已生效", "Direct-rule provider is active"],
+        notConfigured: ["还需要执行一次性初始化", "One-time setup is still required"],
+        copySetup: ["复制初始化命令", "Copy setup command"],
+        clearAll: ["清空", "Clear all"],
+        copied: ["已复制到剪贴板", "Copied to clipboard"],
+        needFields: ["名称和地址都要填", "Name and URL are required"],
         working: ["处理中…", "Working…"]
     })
     function tr(key, subst) {
@@ -120,14 +88,6 @@ Item {
         if (subst !== undefined)
             text = text.replace("%1", subst);
         return text;
-    }
-    function modeHint() {
-        const mode = snap.mode ?? "rule";
-        if (mode === "global")
-            return tr("modeHintGlobal");
-        if (mode === "direct")
-            return tr("modeHintDirect");
-        return tr("modeHintRule");
     }
     function localeDate(value) {
         if (!value)
@@ -165,24 +125,17 @@ Item {
     property var snap: ({})
     property var providers: []
     property var direct: ({ entries: [] })
-    property var delayMap: ({})
     property string selGroup: ""
     property string ipText: ""
     property string toastText: ""
     property bool busy: false
     property int page: 0
+    property var delayMap: ({})
     property string pendingDelete: ""
     property string editingName: ""
     property bool uiReady: false
     property bool uiChecked: false
     property bool pendingWebFallback: false
-
-    readonly property bool active: (snap.service ?? "") === "active"
-    readonly property var groups: snap.groups ?? []
-    readonly property var nodes: snap.nodes ?? []
-    readonly property var directEntries: direct.entries ?? []
-    readonly property string group: selGroup.length > 0 ? selGroup : (snap.group ?? "")
-    readonly property bool directConfigured: direct.configured ?? false
 
     readonly property var controllerHost: {
         const m = /^https?:\/\/([^/:]+)(?::(\d+))?/.exec(controller);
@@ -191,6 +144,13 @@ Item {
             "port": m && m[2] ? m[2] : "9090"
         };
     }
+
+    readonly property bool active: (snap.service ?? "") === "active"
+    readonly property var groups: snap.groups ?? []
+    readonly property var nodes: snap.nodes ?? []
+    readonly property var directEntries: direct.entries ?? []
+    readonly property string group: selGroup.length > 0 ? selGroup : (snap.group ?? "")
+    readonly property bool directConfigured: direct.configured ?? false
 
     function run(args) {
         // NB: no stray property writes here. Assigning to a property Process does
@@ -438,7 +398,7 @@ Item {
             id: inner
             anchors.fill: parent
             anchors.margins: Theme.spacingM
-            spacing: Theme.spacingS
+            spacing: Theme.spacingM
         }
     }
 
@@ -448,15 +408,6 @@ Item {
         color: Theme.surfaceVariantText
     }
 
-    // One-line explanation under a section label; keeps the panel readable for
-    // people who do not know proxy vocabulary yet.
-    component Hint: StyledText {
-        width: parent ? parent.width : 0
-        font.pixelSize: Theme.fontSizeSmall - 1
-        color: Theme.surfaceVariantText
-        wrapMode: Text.WordWrap
-    }
-
     // ── layout ───────────────────────────────────────────────────────────────
     Column {
         id: mainColumn
@@ -464,7 +415,7 @@ Item {
         x: panel.pad
         y: panel.pad
         width: parent.width - panel.pad * 2
-        spacing: Theme.spacingS
+        spacing: Theme.spacingM
 
         // header
         RowLayout {
@@ -473,19 +424,12 @@ Item {
             spacing: Theme.spacingS
 
             StyledText {
-                text: panel.tr("title")
+                text: "Mihomo TUN"
                 font.pixelSize: Theme.fontSizeLarge
                 font.weight: Font.Medium
                 color: Theme.surfaceText
-            }
-            StyledText {
-                text: panel.tr("product")
-                font.pixelSize: Theme.fontSizeSmall
-                color: Theme.surfaceVariantText
-                Layout.alignment: Qt.AlignVCenter
-            }
-            Item {
                 Layout.fillWidth: true
+                elide: Text.ElideRight
             }
             DankIcon {
                 visible: panel.busy
@@ -541,32 +485,24 @@ Item {
         Card {
             visible: panel.page === 0
 
-            Column {
+            RowLayout {
                 width: parent.width
                 spacing: Theme.spacingS
 
-                RowLayout {
-                    width: parent.width
-                    spacing: Theme.spacingS
-
-                    FieldLabel {
-                        text: panel.tr("exitIp")
-                    }
-                    StyledText {
-                        text: panel.ipText.length > 0 ? panel.ipText : "—"
-                        font.pixelSize: Theme.fontSizeMedium
-                        color: Theme.surfaceText
-                        Layout.fillWidth: true
-                        elide: Text.ElideRight
-                    }
-                    Chip {
-                        label: panel.tr("check")
-                        icon: "public"
-                        onTapped: panel.run(["ip"])
-                    }
+                FieldLabel {
+                    text: panel.tr("exitIp")
                 }
-                Hint {
-                    text: panel.tr("exitIpHint")
+                StyledText {
+                    text: panel.ipText.length > 0 ? panel.ipText : "—"
+                    font.pixelSize: Theme.fontSizeMedium
+                    color: Theme.surfaceText
+                    Layout.fillWidth: true
+                    elide: Text.ElideRight
+                }
+                Chip {
+                    label: panel.tr("check")
+                    icon: "public"
+                    onTapped: panel.run(["ip"])
                 }
             }
 
@@ -597,9 +533,6 @@ Item {
                     currentIndex: ["rule", "global", "direct"].indexOf(panel.snap.mode ?? "")
                     onSelectionChanged: index => panel.run(["mode", ["rule", "global", "direct"][index]])
                 }
-                Hint {
-                    text: panel.modeHint()
-                }
             }
 
             Column {
@@ -618,9 +551,6 @@ Item {
                         panel.selGroup = panel.groups[index];
                         panel.run(["group", panel.selGroup]);
                     }
-                }
-                Hint {
-                    text: panel.tr("groupsHint")
                 }
             }
 
@@ -654,7 +584,7 @@ Item {
                     id: nodeList
 
                     width: parent.width
-                    height: Math.min(160, Math.max(32, panel.nodes.length * 32))
+                    height: Math.min(192, Math.max(32, panel.nodes.length * 32))
                     clip: true
                     spacing: 0
                     model: panel.nodes
@@ -702,8 +632,11 @@ Item {
                     }
                 }
 
-                Hint {
-                    text: panel.snap.truncated === true ? panel.tr("truncated", SettingsData.getPluginSetting("mihomoTun", "max_nodes", 80)) : panel.tr("nodesHint")
+                StyledText {
+                    visible: panel.snap.truncated === true
+                    text: panel.tr("truncated", SettingsData.getPluginSetting("mihomoTun", "max_nodes", 80))
+                    font.pixelSize: Theme.fontSizeSmall
+                    color: Theme.surfaceVariantText
                 }
             }
 
@@ -728,9 +661,13 @@ Item {
                 }
             }
 
-            Hint {
+            StyledText {
                 visible: panel.uiChecked && !panel.uiReady
                 text: panel.tr("webPanelHint")
+                font.pixelSize: Theme.fontSizeSmall
+                color: Theme.surfaceVariantText
+                width: parent.width
+                wrapMode: Text.WordWrap
             }
         }
 
@@ -752,10 +689,6 @@ Item {
                     icon: "sync"
                     onTapped: panel.run(["provider-update", "all"])
                 }
-            }
-
-            Hint {
-                text: panel.tr("subsHint")
             }
 
             StyledText {
@@ -919,8 +852,12 @@ Item {
             FieldLabel {
                 text: panel.tr("directRules")
             }
-            Hint {
+            StyledText {
                 text: panel.tr("directHelp")
+                font.pixelSize: Theme.fontSizeSmall
+                color: Theme.surfaceVariantText
+                width: parent.width
+                wrapMode: Text.WordWrap
             }
 
             RowLayout {
@@ -938,7 +875,7 @@ Item {
                     font.pixelSize: Theme.fontSizeSmall
                     color: panel.directConfigured ? Theme.primary : Theme.error
                     Layout.fillWidth: true
-                    wrapMode: Text.WordWrap
+                    elide: Text.ElideRight
                 }
                 Chip {
                     visible: !panel.directConfigured
@@ -946,7 +883,7 @@ Item {
                     icon: "content_copy"
                     onTapped: {
                         panel.copyText(panel.direct.setup_command ?? "");
-                        panel.say(panel.tr("copySetupDone"), false);
+                        panel.say(panel.tr("copied"), false);
                     }
                 }
             }
@@ -962,7 +899,7 @@ Item {
                 id: directList
 
                 width: parent.width
-                height: Math.min(160, Math.max(1, panel.directEntries.length * 32))
+                height: Math.min(192, Math.max(1, panel.directEntries.length * 32))
                 visible: panel.directEntries.length > 0
                 clip: true
                 spacing: 0
@@ -1035,7 +972,7 @@ Item {
                     }
                 }
                 Chip {
-                    label: panel.tr("reload")
+                    label: panel.tr("refresh")
                     icon: "sync"
                     onTapped: panel.run(["direct-sync"])
                 }

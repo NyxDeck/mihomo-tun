@@ -2,12 +2,12 @@
 # Mihomo TUN (DMS) — full install and configuration flow.
 #
 # Installs the mihomo binary, writes a TUN-capable /etc/mihomo/config.yaml and
-# the controller secret, registers the plugin's DIRECT rule provider, and
-# enables the systemd unit. Idempotent: an existing config is never replaced
-# unless --force is given.
+# the controller secret, registers the plugin's DIRECT rule provider, drops a
+# local dashboard into /etc/mihomo/ui, and enables the systemd unit.
+# Idempotent: an existing config is never replaced unless --force is given.
 #
 # Needs root (writes /etc/mihomo and manages the unit). Run it via:
-#   sudo ./install.sh [--yes] [--force] [--no-start]
+#   sudo ./install.sh [--yes] [--force] [--no-start] [--no-dashboard]
 # or, from the plugin, it is invoked through pkexec.
 set -euo pipefail
 
@@ -23,13 +23,15 @@ CONTROLLER="127.0.0.1:9090"
 FORCE=0
 ASSUME_YES=0
 NO_START=0
+NO_DASHBOARD=0
 for arg in "$@"; do
     case "$arg" in
-        --force)    FORCE=1 ;;
-        --yes|-y)   ASSUME_YES=1 ;;
-        --no-start) NO_START=1 ;;
+        --force)        FORCE=1 ;;
+        --yes|-y)       ASSUME_YES=1 ;;
+        --no-start)     NO_START=1 ;;
+        --no-dashboard) NO_DASHBOARD=1 ;;
         -h|--help)
-            sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'
+            sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'
             exit 0 ;;
         *) echo "unknown option: $arg" >&2; exit 2 ;;
     esac
@@ -163,7 +165,27 @@ else
             "provider setup failed (retry later from the panel)")"
 fi
 
-# ── 5. service ───────────────────────────────────────────────────────────────
+# ── 5. local dashboard ───────────────────────────────────────────────────────
+if [ "$NO_DASHBOARD" -eq 1 ]; then
+    warn "$(msg "按要求跳过本地控制面板（--no-dashboard）" \
+            "skipping the local dashboard (--no-dashboard)")"
+else
+    step "$(msg "安装本地控制面板" "Installing the local dashboard")"
+    set +e
+    MIHOMO_CONFIG_FILE="$CONFIG_FILE" MIHOMO_UNIT="$UNIT" \
+        bash "$REPO_DIR/scripts/install-dashboard.sh" --no-restart 2>&1 | sed 's/^/  /'
+    rc=${PIPESTATUS[0]}
+    set -e
+    if [ "$rc" -eq 0 ]; then
+        ok "$(msg "面板就绪，服务启动后可访问 /ui/" \
+                "dashboard ready; /ui/ comes up with the service")"
+    else
+        warn "$(msg "面板安装失败（稍后可单独重试 install-dashboard.sh）" \
+                "dashboard install failed (retry scripts/install-dashboard.sh later)")"
+    fi
+fi
+
+# ── 6. service ───────────────────────────────────────────────────────────────
 step "$(msg "启用 systemd 服务" "Enabling the systemd unit")"
 systemctl enable "$UNIT" >/dev/null 2>&1 || true
 if [ "$NO_START" -eq 1 ]; then

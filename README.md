@@ -29,22 +29,44 @@ helper is reused unchanged; the UI is native to DMS.
 
 ## Install
 
-Full install / configuration (writes `/etc/mihomo`, enables the unit):
+Through the NyxDeck CLI, which owns the whole chain (core → config →
+dashboard → service → DMS plugin):
 
 ```sh
-sudo ./install.sh
+nyxdeck mihomo install          # full pipeline, idempotent
+nyxdeck mihomo dashboard        # only the local dashboard at /ui/
+nyxdeck mihomo status
 ```
+
+Directly, from a checkout:
+
+```sh
+sudo ./install.sh               # mihomo + config + DIRECT provider + dashboard + unit
+sudo ./scripts/install-dashboard.sh   # dashboard only
+```
+
+The install writes `/etc/mihomo`, installs **metacubexd** into
+`/etc/mihomo/ui`, adds `external-ui` to the config, and enables the unit.
+Mihomo only serves `/ui/` when `external-ui` is set, so without that step the
+panel's *Web panel* button has nothing to open (it falls back to the hosted
+dashboard and copies the secret to your clipboard).
 
 Plugin only (until it is in the registry):
 
 ```sh
 git clone https://github.com/NyxDeck/mihomo-tun.git \
-    ~/.config/DankMaterialShell/plugins/mihomo-tun
+    ~/.config/DankMaterialShell/plugins/mihomoTun
 dms restart
 ```
 
 Then add the widget to the bar and open its panel. Settings hold the controller
 URL, secret file, unit name, and polling interval.
+
+### Dashboard options
+
+`install-dashboard.sh` accepts `--force` (re-download), `--url URL` (mirror),
+`--name` (UI name), `--no-restart`, and honours `MIHOMO_UI_URL`,
+`MIHOMO_UI_DIR`, `MIHOMO_CONFIG_FILE`, `MIHOMO_UNIT`.
 
 ## Layout
 
@@ -52,9 +74,10 @@ URL, secret file, unit name, and polling interval.
 plugin.json            DMS plugin manifest
 MihomoService.qml      daemon: polls status, exposes `dms ipc call mihomoTun ...`
 MihomoWidget.qml       bar pill + popout
-MihomoPanel.qml        popout panel (mode, groups, nodes, exit IP)
+MihomoPanel.qml        popout panel (overview / subscriptions / direct rules)
 MihomoSettings.qml     settings page
 install.sh             full mihomo install / configuration flow
+scripts/install-dashboard.sh  install metacubexd + external-ui
 scripts/mihomo-ctl.py  controller backend (one JSON object per call)
 scripts/configure-direct-rules.py    root DIRECT rule-provider setup
 scripts/apply-subscription-change.py subscription edits
