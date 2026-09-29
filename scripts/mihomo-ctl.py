@@ -38,7 +38,7 @@ CONFIG_FILE = os.environ.get("MIHOMO_CONFIG_FILE", "/etc/mihomo/config.yaml")
 
 def default_plugin_data_dir():
     base = os.environ.get("XDG_STATE_HOME") or os.path.expanduser("~/.local/state")
-    return os.path.join(base, "noctalia", "plugins", "data", "LyraVoid", "mihomo-tun")
+    return os.path.join(base, "nyxdeck", "plugins", "mihomo-tun")
 
 
 PLUGIN_DATA_DIR = os.environ.get("MIHOMO_PLUGIN_DATA_DIR") or default_plugin_data_dir()
