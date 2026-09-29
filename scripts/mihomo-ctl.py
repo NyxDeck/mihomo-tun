@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""mihomo 控制后端 —— Noctalia 插件与终端共用的唯一入口。
+"""mihomo 控制后端 —— 插件与终端共用的唯一入口。
 
 设计约束：
   * 每个子命令往 stdout 打**一行 JSON**（稳定契约，Luau 侧只做 json.decode）

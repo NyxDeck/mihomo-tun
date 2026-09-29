@@ -7,7 +7,7 @@ import qs.Services
 import qs.Widgets
 
 // Popout content for the mihomoTun plugin.
-// Layout mirrors Noctalia's mihomo-tun panel: Overview / Subscriptions / Direct rules,
+// Layout: overview / subscriptions / direct rules,
 // built from DMS' own widgets so it matches the shell.
 Item {
     id: panel

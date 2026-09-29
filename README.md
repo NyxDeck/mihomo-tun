@@ -5,9 +5,8 @@ that controls a local, systemd-managed **mihomo** TUN service: start / stop,
 proxy mode, proxy groups and nodes, subscriptions, DIRECT rules, and the exit
 IP. It also carries the full install and configuration flow.
 
-Ported from the Noctalia plugin
-[mihomo-tun](https://github.com/matsuzaka-yuki/mihomo-tun) (MIT). The Python
-helper is reused unchanged; the UI is native to DMS.
+A port of the earlier [mihomo-tun](https://github.com/matsuzaka-yuki/mihomo-tun)
+plugin (MIT). The Python helper is reused unchanged; the UI is native to DMS.
 
 ## What it does
 
