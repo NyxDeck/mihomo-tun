@@ -93,6 +93,10 @@ class ConfigureDirectRulesTest(unittest.TestCase):
     def test_inserts_the_rule_when_there_is_none(self):
         self.assert_managed(self.render(make_config(block=False, rule=False)))
 
+    def test_leaves_an_already_correct_config_alone(self):
+        once = self.render(make_config())
+        self.assertEqual(self.render(once), once)
+
     def test_keeps_a_hand_written_provider_entry(self):
         """The markers may sit inside a rule-providers section the user already had."""
         source = (

@@ -64,7 +64,13 @@ def remove_managed_provider(lines):
     last = next((index for index in range(first, len(lines)) if lines[index] == END), None)
     if last is None:
         raise SystemExit("发现不完整的受管配置块：" + START)
-    return lines[:first] + lines[last + 1:]
+    # 块尾那个空行也一起删：install_provider() 每次都会把自己的空行写回来，不删的
+    # 话每跑一次配置就多一个空行，render_config() 永远不收敛，main() 里那句
+    # 「已配置，无需修改」也就永远走不到 —— 每次都要写文件、备份、重启 mihomo。
+    end = last + 1
+    if end < len(lines) and lines[end] == "":
+        end += 1
+    return lines[:first] + lines[end:]
 
 
 def install_provider(text):
@@ -83,7 +89,7 @@ def install_provider(text):
                 raise SystemExit(
                     "配置里已有未受管的 %s，请先手动移除或改名后再运行" % PROVIDER_NAME
                 )
-        block = [START] + provider_entry(2) + [END]
+        block = [START] + provider_entry(2) + [END, ""]
         lines[end:end] = block
     return "\n".join(lines) + "\n"
 
