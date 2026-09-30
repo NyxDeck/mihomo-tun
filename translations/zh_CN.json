@@ -38,14 +38,29 @@
     "Copy setup command": {
         "Copy setup command": "复制初始化命令"
     },
+    "Could not reach an IP echo service": {
+        "Could not reach an IP echo service": "拿不到出口 IP"
+    },
+    "Could not start or stop the service": {
+        "Could not start or stop the service": "无法启动或停止服务"
+    },
     "Delete": {
         "Delete": "删除"
     },
     "Direct": {
         "Direct": "直连"
     },
+    "Direct rule removed": {
+        "Direct rule removed": "直连规则已删除"
+    },
     "Direct rules": {
         "Direct rules": "直连"
+    },
+    "Direct rules cleared": {
+        "Direct rules cleared": "直连规则已清空"
+    },
+    "Direct rules refreshed": {
+        "Direct rules refreshed": "直连规则已刷新"
     },
     "Direct-rule provider is active": {
         "Direct-rule provider is active": "直连 Provider 已生效"
@@ -58,6 +73,9 @@
     },
     "Edit": {
         "Edit": "修改"
+    },
+    "Enter a domain or an IP address": {
+        "Enter a domain or an IP address": "请输入域名或 IP"
     },
     "Exit IP": {
         "Exit IP": "出口 IP"
@@ -73,6 +91,9 @@
     },
     "Interpreter that runs the helper.": {
         "Interpreter that runs the helper.": "运行辅助脚本的解释器。"
+    },
+    "Latency test finished": {
+        "Latency test finished": "测速完成"
     },
     "Loading…": {
         "Loading…": "加载中…"
@@ -95,6 +116,9 @@
     "Mode": {
         "Mode": "模式"
     },
+    "Mode switched": {
+        "Mode switched": "模式已切换"
+    },
     "Name": {
         "Name": "名称"
     },
@@ -115,6 +139,9 @@
     },
     "No selectable nodes in this group": {
         "No selectable nodes in this group": "该分组没有可切换的节点"
+    },
+    "Node switched": {
+        "Node switched": "节点已切换"
     },
     "Nodes": {
         "Nodes": "节点"
@@ -143,6 +170,12 @@
     "Quota unavailable": {
         "Quota unavailable": "用量未知"
     },
+    "Reading the policy group failed": {
+        "Reading the policy group failed": "读取策略组失败"
+    },
+    "Reading the subscriptions failed": {
+        "Reading the subscriptions failed": "读取订阅失败"
+    },
     "Refresh": {
         "Refresh": "刷新"
     },
@@ -157,6 +190,9 @@
     },
     "Save": {
         "Save": "保存"
+    },
+    "Saved, but refreshing the rule provider failed": {
+        "Saved, but refreshing the rule provider failed": "已保存，但刷新 rule-provider 失败"
     },
     "Secret file": {
         "Secret file": "密钥文件"
@@ -173,14 +209,50 @@
     "Subscription URL": {
         "Subscription URL": "订阅地址"
     },
+    "Subscription update triggered": {
+        "Subscription update triggered": "已触发订阅更新"
+    },
+    "Subscription updates triggered": {
+        "Subscription updates triggered": "已触发全部订阅更新"
+    },
     "Subscriptions": {
         "Subscriptions": "订阅"
+    },
+    "Switching the mode failed": {
+        "Switching the mode failed": "切换模式失败"
+    },
+    "Switching the node failed": {
+        "Switching the node failed": "切换节点失败"
     },
     "Test latency": {
         "Test latency": "延迟测试"
     },
     "Tested %1 nodes": {
         "Tested %1 nodes": "已测 %1 个节点"
+    },
+    "That direct rule already exists": {
+        "That direct rule already exists": "这条直连规则已经存在"
+    },
+    "That direct rule was not found": {
+        "That direct rule was not found": "找不到这条直连规则"
+    },
+    "That policy group does not exist": {
+        "That policy group does not exist": "该策略组不存在"
+    },
+    "The admin helper failed or was cancelled": {
+        "The admin helper failed or was cancelled": "管理员配置操作被取消或失败"
+    },
+    "The admin helper returned nothing usable": {
+        "The admin helper returned nothing usable": "配置助手没有返回有效结果"
+    },
+    "The admin helper timed out": {
+        "The admin helper timed out": "管理员配置操作超时"
+    },
+    "The controller secret is not readable; see the plugin README": {
+        "The controller secret is not readable; see the plugin README": "读不到控制器密钥（见插件 README）"
+    },
+    "The latency test failed": {
+        "The latency test failed": "测速失败"
     },
     "Turn off": {
         "Turn off": "关闭"
@@ -190,6 +262,9 @@
     },
     "Unit controlled by start / stop.": {
         "Unit controlled by start / stop.": "由 开启 / 关闭 控制的单元。"
+    },
+    "Unknown plugin command": {
+        "Unknown plugin command": "未知插件命令"
     },
     "Update": {
         "Update": "更新"
@@ -203,6 +278,36 @@
     "Updated %1": {
         "Updated %1": "更新于 %1"
     },
+    "Updating the subscription failed": {
+        "Updating the subscription failed": "更新订阅失败"
+    },
+    "Updating the subscriptions failed": {
+        "Updating the subscriptions failed": "更新全部订阅失败"
+    },
+    "Usage: a domain or an IP address": {
+        "Usage: a domain or an IP address": "用法：域名或 IP"
+    },
+    "Usage: a group and a node": {
+        "Usage: a group and a node": "用法：组名 节点名"
+    },
+    "Usage: a group name": {
+        "Usage: a group name": "用法：组名"
+    },
+    "Usage: a rule id": {
+        "Usage: a rule id": "用法：规则 ID"
+    },
+    "Usage: a subscription name": {
+        "Usage: a subscription name": "用法：订阅名"
+    },
+    "Usage: a subscription name, or all": {
+        "Usage: a subscription name, or all": "用法：订阅名或 all"
+    },
+    "Usage: name, URL and optionally the old name": {
+        "Usage: name, URL and optionally the old name": "用法：名称 订阅地址 [原名称]"
+    },
+    "Usage: rule, global or direct": {
+        "Usage: rule, global or direct": "用法：rule、global 或 direct"
+    },
     "Web panel": {
         "Web panel": "Web 面板"
     },
@@ -211,6 +316,9 @@
     },
     "example.com or 203.0.113.7/24": {
         "example.com or 203.0.113.7/24": "example.com 或 203.0.113.7/24"
+    },
+    "pkexec is missing, so admin configuration cannot run": {
+        "pkexec is missing, so admin configuration cannot run": "缺少 pkexec，无法执行需要管理员授权的配置"
     },
     "systemd unit": {
         "systemd unit": "systemd 单元"

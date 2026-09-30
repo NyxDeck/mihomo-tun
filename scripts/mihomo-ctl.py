@@ -67,8 +67,52 @@ def out(obj, code=0):
     sys.exit(code)
 
 
+# The error text is for a terminal. The UI translates by code and never shows
+# prose, so the mapping lives in one place instead of at every call site.
+FAILURE_CODES = (
+    ("systemctl", "service_failed"),
+    ("mode 需要", "usage_mode"),
+    ("切换模式失败", "mode_failed"),
+    ("select 需要", "usage_select"),
+    ("切换节点失败", "select_failed"),
+    ("group 需要", "usage_group"),
+    ("不存在或控制器返回", "group_missing"),
+    ("读取组", "group_failed"),
+    ("延迟测试失败", "delay_failed"),
+    ("读取订阅列表失败", "providers_failed"),
+    ("更新全部订阅失败", "providers_update_failed"),
+    ("更新订阅", "provider_update_failed"),
+    ("provider-update 需要", "usage_provider_update"),
+    ("找不到 pkexec", "no_pkexec"),
+    ("管理员配置操作超时", "admin_timeout"),
+    ("管理员配置操作被取消", "admin_failed"),
+    ("配置助手没有返回有效结果", "admin_bad_result"),
+    ("subscription-upsert 需要", "usage_subscription_upsert"),
+    ("subscription-delete 需要", "usage_subscription_delete"),
+    ("direct-add 需要", "usage_direct_add"),
+    ("direct-remove 需要", "usage_direct_remove"),
+    ("已经存在", "duplicate_rule"),
+    ("找不到这条直连规则", "rule_missing"),
+    ("刷新 rule-provider 失败", "direct_refresh_failed"),
+    ("刷新直连规则失败", "direct_refresh_failed"),
+    ("拿不到出口 IP", "no_exit_ip"),
+    ("读不到密钥", "no_secret"),
+    ("未知子命令", "unknown_command"),
+    ("不能包含空格", "invalid_target"),
+    ("请输入域名或 IP", "invalid_target"),
+    ("不要带路径", "invalid_target"),
+    ("域名格式无效", "invalid_target"),
+)
+
+
 def fail(msg, **extra):
-    payload = {"ok": False, "error": str(msg)}
+    text = str(msg)
+    code = "error"
+    for needle, name in FAILURE_CODES:
+        if needle in text:
+            code = name
+            break
+    payload = {"ok": False, "error": text, "code": code}
     payload.update(extra)
     out(payload, 1)
 
@@ -345,7 +389,8 @@ def cmd_toggle():
         fail("systemctl %s %s 失败：%s" % (verb, UNIT, err or "未知错误"),
              service=after, verb=verb)
     out({"ok": True, "service": after, "verb": verb,
-         "message": "代理已" + ("关闭（恢复直连）" if verb == "stop" else "开启")})
+         "message": "代理已" + ("关闭（恢复直连）" if verb == "stop" else "开启"),
+         "code": "proxy_stopped" if verb == "stop" else "proxy_started"})
 
 
 def cmd_mode(argv):
@@ -355,7 +400,7 @@ def cmd_mode(argv):
         api("/configs", method="PATCH", body={"mode": argv[0]})
     except Exception as exc:
         fail("切换模式失败：%s" % exc)
-    out({"ok": True, "mode": argv[0], "message": "模式已切到 " + argv[0]})
+    out({"ok": True, "mode": argv[0], "message": "模式已切到 " + argv[0], "code": "mode_changed"})
 
 
 def cmd_select(argv):
@@ -367,7 +412,8 @@ def cmd_select(argv):
             body={"name": node})
     except Exception as exc:
         fail("切换节点失败：%s" % exc)
-    result = {"ok": True, "group": group, "now": node, "message": "已切到 " + node}
+    result = {"ok": True, "group": group, "now": node, "message": "已切到 " + node,
+              "code": "node_selected"}
     try:
         result["snapshot"] = group_snapshot(group)
     except Exception:
@@ -410,7 +456,7 @@ def cmd_delay(argv):
         fail("延迟测试失败：%s" % exc)
     items = [{"name": k, "delay": v} for k, v in result.items()]
     items.sort(key=lambda it: (it["delay"] is None, it["delay"] or 0))
-    out({"ok": True, "group": group, "results": items})
+    out({"ok": True, "group": group, "results": items, "code": "delay_done"})
 
 
 def cmd_update_provider(argv):
@@ -419,7 +465,7 @@ def cmd_update_provider(argv):
         api("/providers/proxies/%s" % urllib.parse.quote(name, safe=""), method="PUT")
     except Exception as exc:
         fail("更新订阅失败：%s" % exc)
-    out({"ok": True, "provider": name, "message": "订阅已触发更新（机场侧限流时会失败）"})
+    out({"ok": True, "provider": name, "message": "订阅已触发更新（机场侧限流时会失败）", "code": "provider_updated"})
 
 
 def provider_snapshot():
@@ -475,13 +521,13 @@ def cmd_provider_update(argv):
                 update_provider(provider["name"])
         except Exception as exc:
             fail("更新全部订阅失败：%s" % exc)
-        out({"ok": True, "updated": [item["name"] for item in providers],
+        out({"ok": True, "code": "providers_updated", "updated": [item["name"] for item in providers],
              "message": "已触发更新 %d 个订阅" % len(providers)})
     try:
         update_provider(name)
     except Exception as exc:
         fail("更新订阅 %s 失败：%s" % (name, exc))
-    out({"ok": True, "provider": name, "message": "订阅已触发更新"})
+    out({"ok": True, "provider": name, "message": "订阅已触发更新", "code": "provider_updated"})
 
 
 def apply_subscription_change(op):
@@ -612,7 +658,7 @@ def cmd_direct_remove(argv):
     except Exception as exc:
         fail("规则已删除，但刷新 rule-provider 失败：%s" % exc,
              configured=provider_exists())
-    out({"ok": True, "message": "已删除直连规则", **direct_snapshot()})
+    out({"ok": True, "message": "已删除直连规则", "code": "direct_removed", **direct_snapshot()})
 
 
 def cmd_direct_clear():
@@ -622,7 +668,7 @@ def cmd_direct_clear():
     except Exception as exc:
         fail("列表已清空，但刷新 rule-provider 失败：%s" % exc,
              configured=provider_exists())
-    out({"ok": True, "message": "已清空直连规则", **direct_snapshot()})
+    out({"ok": True, "message": "已清空直连规则", "code": "direct_cleared", **direct_snapshot()})
 
 
 def cmd_direct_sync():
@@ -632,6 +678,7 @@ def cmd_direct_sync():
     except Exception as exc:
         fail("刷新直连规则失败：%s" % exc, configured=provider_exists())
     out({"ok": True, "message": "直连规则已刷新" if configured else "尚未配置 Mihomo rule-provider",
+             "code": "direct_refreshed" if configured else "not_configured",
          **direct_snapshot()})
 
 

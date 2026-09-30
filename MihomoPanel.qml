@@ -121,6 +121,59 @@ Item {
         else
             ToastService.showInfo(message);
     }
+    // The backend answers with codes and never prose; the sentences live here so
+    // DMS can translate them (and so they are literals the extraction tooling
+    // can read). Anything unmapped falls back to what the helper said.
+    readonly property var resultText: ({
+        "proxy_started": "Proxy is ON",
+        "proxy_stopped": "Proxy is OFF",
+        "mode_changed": "Mode switched",
+        "node_selected": "Node switched",
+        "delay_done": "Latency test finished",
+        "provider_updated": "Subscription update triggered",
+        "providers_updated": "Subscription updates triggered",
+        "direct_removed": "Direct rule removed",
+        "direct_cleared": "Direct rules cleared",
+        "direct_refreshed": "Direct rules refreshed",
+        "not_configured": "One-time setup is still required",
+        "service_failed": "Could not start or stop the service",
+        "mode_failed": "Switching the mode failed",
+        "select_failed": "Switching the node failed",
+        "group_missing": "That policy group does not exist",
+        "group_failed": "Reading the policy group failed",
+        "delay_failed": "The latency test failed",
+        "providers_failed": "Reading the subscriptions failed",
+        "provider_update_failed": "Updating the subscription failed",
+        "providers_update_failed": "Updating the subscriptions failed",
+        "no_pkexec": "pkexec is missing, so admin configuration cannot run",
+        "admin_timeout": "The admin helper timed out",
+        "admin_failed": "The admin helper failed or was cancelled",
+        "admin_bad_result": "The admin helper returned nothing usable",
+        "duplicate_rule": "That direct rule already exists",
+        "rule_missing": "That direct rule was not found",
+        "direct_refresh_failed": "Saved, but refreshing the rule provider failed",
+        "no_exit_ip": "Could not reach an IP echo service",
+        "no_secret": "The controller secret is not readable; see the plugin README",
+        "invalid_target": "Enter a domain or an IP address",
+        "usage_mode": "Usage: rule, global or direct",
+        "usage_select": "Usage: a group and a node",
+        "usage_group": "Usage: a group name",
+        "usage_provider_update": "Usage: a subscription name, or all",
+        "usage_subscription_upsert": "Usage: name, URL and optionally the old name",
+        "usage_subscription_delete": "Usage: a subscription name",
+        "usage_direct_add": "Usage: a domain or an IP address",
+        "usage_direct_remove": "Usage: a rule id",
+        "unknown_command": "Unknown plugin command"
+    })
+
+    function resultMessage(r) {
+        const key = String(r.code ?? "");
+        const english = resultText[key] ?? "";
+        if (english !== "")
+            return tr(english);
+        return String(r.message ?? r.error ?? "");
+    }
+
     function shortNode(value) {
         const parts = String(value || "").split("→");
         return parts[parts.length - 1].trim();
@@ -198,7 +251,7 @@ Item {
             splitMarker: "\n"
             onRead: line => panel.parse(line, r => {
                 if (r.error) {
-                    panel.say(String(r.error), true);
+                    panel.say(panel.resultMessage(r), true);
                     return;
                 }
                 if (r.secret) {
@@ -230,7 +283,7 @@ Item {
                     return;
                 }
                 if (r.message)
-                    panel.say(String(r.message), false);
+                    panel.say(panel.resultMessage(r), false);
             })
         }
         onRunningChanged: {
