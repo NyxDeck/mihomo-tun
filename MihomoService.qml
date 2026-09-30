@@ -3,14 +3,27 @@ import Quickshell
 import Quickshell.Io
 import qs.Common
 import qs.Modules.Plugins
+import qs.Widgets
 
-// Daemon: polls the mihomo controller through scripts/mihomo-ctl.py and exposes
-// the state plus IPC actions. The panel does its own polling while it is open,
-// so the daemon is mainly for external control (keybinds, `dms ipc`).
+// Daemon: polls the mihomo controller through scripts/mihomo-ctl.py, publishes
+// the snapshot for the bar widgets to render, and exposes IPC actions. One
+// poller for the shell, however many widgets are on screen.
 PluginComponent {
     id: daemon
 
     property var snapshot: ({})
+
+    PluginGlobalVar {
+        id: snapshotVar
+
+        varName: "snapshot"
+        defaultValue: ({})
+    }
+
+    function publish(value) {
+        snapshot = value;
+        snapshotVar.set(value);
+    }
 
     readonly property string pid: (pluginId && pluginId.length > 0) ? pluginId : "mihomoTun"
     readonly property string helper: Qt.resolvedUrl("scripts/mihomo-ctl.py").toString().replace("file://", "")
@@ -61,9 +74,9 @@ PluginComponent {
             splitMarker: "\n"
             onRead: line => {
                 try {
-                    daemon.snapshot = JSON.parse(line);
+                    daemon.publish(JSON.parse(line));
                 } catch (e) {
-                    daemon.snapshot = { ok: false, error: "bad json" };
+                    daemon.publish({ ok: false, error: "bad json" });
                 }
             }
         }
@@ -77,7 +90,7 @@ PluginComponent {
             splitMarker: "\n"
             onRead: line => {
                 try {
-                    daemon.snapshot = JSON.parse(line);
+                    daemon.publish(JSON.parse(line));
                 } catch (e) { /* keep the old snapshot */ }
             }
         }

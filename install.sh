@@ -87,8 +87,24 @@ else
 import secrets
 print(secrets.token_urlsafe(24))
 PY
-    chmod 600 "$SECRET_FILE"
     ok "$(msg "已生成控制器密钥" "generated the controller secret")"
+fi
+
+# The plugin reads the secret as the invoking user, and /etc/mihomo is root
+# only, so the file has to be readable through their group: without this every
+# controller call fails right after a fresh install. Applied to an existing
+# secret too, so re-running the installer repairs an old one.
+secret_owner_uid="${SUDO_UID:-}${PKEXEC_UID:-}"
+secret_group=""
+if [ -n "$secret_owner_uid" ]; then
+    secret_group="$(id -gn "$secret_owner_uid" 2>/dev/null || true)"
+fi
+chmod 640 "$SECRET_FILE"
+if [ -n "$secret_group" ]; then
+    chown "root:$secret_group" "$SECRET_FILE" 2>/dev/null || true
+else
+    warn "$(msg "无法判断你的用户组，请自己执行：sudo chgrp $(id -gn 2>/dev/null || echo 你的组) $SECRET_FILE" \
+            "could not work out your group; run: sudo chgrp <your group> $SECRET_FILE")"
 fi
 SECRET="$(cat "$SECRET_FILE")"
 

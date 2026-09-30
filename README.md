@@ -97,6 +97,13 @@ python3 scripts/mihomo-ctl.py ip
 
 ## Security model
 
+The controller secret lives at `/etc/mihomo/.controller-secret`. The installer
+creates it `0640` and puts it in the group of the user who ran it (via
+`SUDO_UID`/`PKEXEC_UID`), because the plugin reads it as that user — a `0600`
+root-owned file makes every controller call fail. If you installed as plain
+root, `sudo chgrp <your group> /etc/mihomo/.controller-secret` is the missing
+step.
+
 - The controller secret is read from a local file and never stored in the
   plugin settings.
 - Starting and stopping the service is a privileged operation; scope

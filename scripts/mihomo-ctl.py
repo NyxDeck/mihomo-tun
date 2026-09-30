@@ -89,7 +89,7 @@ def api(path, method="GET", body=None):
     """
     secret = read_secret()
     if not secret:
-        raise RuntimeError("读不到密钥 %s（应为本用户可读，见 deploy.sh 的 0640 授权）" % SECRET_FILE)
+        raise RuntimeError("读不到密钥 %s（本用户需可读；install.sh 会设为 0640 并归入你的组）" % SECRET_FILE)
     data = json.dumps(body).encode("utf-8") if body is not None else None
     req = urllib.request.Request(CTL + path, data=data, method=method)
     req.add_header("Authorization", "Bearer " + secret)
