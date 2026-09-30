@@ -16,9 +16,17 @@ from pathlib import Path
 
 
 PROVIDER_NAME = "nyxdeck-direct"
-RULE_LINE = "  - RULE-SET,%s,DIRECT" % PROVIDER_NAME
+# Names earlier releases shipped. A RULE-SET line carries none of the BEGIN/END
+# markers the provider block has, so on a config whose block has already been
+# rewritten the name is the only thing left to recognise the line by.
+LEGACY_PROVIDER_NAMES = ("noctalia-direct",)
 START = "# BEGIN Mihomo TUN Control direct exclusions"
 END = "# END Mihomo TUN Control direct exclusions"
+# Written directly above the managed rule line, which is itself unmarked.
+MANAGED_RULE_COMMENT = (
+    "# Managed by Mihomo TUN Control; keep this rule before broad CN rules."
+)
+RULE_PATTERN = re.compile(r"^-\s*RULE-SET,([^,]+),DIRECT$")
 
 
 def section_end(lines, start):
@@ -96,28 +104,79 @@ def rules_indent(lines, start):
     return "  "
 
 
-def install_rule(text):
+def managed_provider_names(lines):
+    """本插件可能写进这份配置的每一个 provider 名字。
+
+    只认当前名字是不够的：那条 RULE-SET 规则行自己没有标记，认它只能靠它带的
+    名字，而改名之前写下的配置带的是旧名字 —— 旧名字既可能还留在受管块里，
+    也可能随块一起被换掉、只剩规则行还在。
+    """
+    names = {PROVIDER_NAME, *LEGACY_PROVIDER_NAMES}
+    first = next((index for index, line in enumerate(lines) if line == START), None)
+    if first is None:
+        return names
+    last = next((index for index in range(first, len(lines)) if lines[index] == END), None)
+    if last is None:
+        return names
+    for line in lines[first + 1:last]:
+        # 块里只有 provider 名字是「有缩进、无值」的行；type/behavior/path 都带值。
+        match = re.match(r"^\s+([^\s:#]+):\s*$", line)
+        if match:
+            names.add(match.group(1))
+    return names
+
+
+def install_rule(text, names):
     lines = text.splitlines()
     rules = find_section(lines, "rules")
     if rules is None:
         raise SystemExit("找不到顶层 rules")
-    start, _ = rules
+    start, end = rules
     indent = rules_indent(lines, start)
     rule_line = indent + "- RULE-SET,%s,DIRECT" % PROVIDER_NAME
-    for line in lines[start + 1:]:
-        if line.strip() == rule_line.strip():
-            return "\n".join(lines) + "\n"
-        if line and not line.startswith((" ", "#")):
-            break
-    lines[start + 1:start + 1] = [
-        indent + "# Managed by Mihomo TUN Control; keep this rule before broad CN rules.",
-        rule_line,
-    ]
+
+    # 按「名字属于本插件」来找，而不是只比对当前名字：旧名字认不出来的话，那条
+    # 规则会被当成别人的行留在原地，而它引用的 rule-set 已经随受管块一起被删了，
+    # mihomo 于是拒绝整份配置（rule set ... not found），用户看到的却是回滚。
+    keep, duplicates = None, []
+    for index in range(start + 1, end):
+        match = RULE_PATTERN.match(lines[index].strip())
+        if match is None:
+            continue
+        marked = index - 1 > start and lines[index - 1].strip() == MANAGED_RULE_COMMENT
+        if match.group(1) not in names and not marked:
+            continue
+        if keep is None:
+            keep = index
+        else:
+            duplicates.append(index)
+
+    if keep is None:
+        lines[start + 1:start + 1] = [
+            indent + MANAGED_RULE_COMMENT,
+            rule_line,
+        ]
+        return "\n".join(lines) + "\n"
+
+    # 已经有一条就待在它该在的位置上（这条规则必须排在宽泛的 CN 规则之前），
+    # 就地改名即可；再插一条会和它并存，而多出来的那条正是校验失败的原因。
+    drop = set()
+    for index in reversed(duplicates):
+        drop.add(index)
+        if index - 1 > keep and lines[index - 1].strip() == MANAGED_RULE_COMMENT:
+            drop.add(index - 1)
+    if drop:
+        lines = [line for position, line in enumerate(lines) if position not in drop]
+    lines[keep] = rule_line
+    if keep > 0 and lines[keep - 1].strip() != MANAGED_RULE_COMMENT:
+        lines.insert(keep, indent + MANAGED_RULE_COMMENT)
     return "\n".join(lines) + "\n"
 
 
 def render_config(text):
-    return install_rule(install_provider(text))
+    # 名字要在块被重写之前读出来：install_provider() 会把块整段换掉。
+    names = managed_provider_names(text.splitlines())
+    return install_rule(install_provider(text), names)
 
 
 def validate(config_path, mihomo_bin):
