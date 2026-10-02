@@ -14,6 +14,12 @@ import sys
 import time
 from pathlib import Path
 
+try:
+    from admin_common import resolve_mihomo_bin
+except ImportError:  # run straight from a checkout: scripts/ is not on sys.path
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from admin_common import resolve_mihomo_bin
+
 
 PROVIDER_NAME = "nyxdeck-direct"
 # Names earlier releases shipped. A RULE-SET line carries none of the BEGIN/END
@@ -226,7 +232,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", default="/etc/mihomo/config.yaml")
     parser.add_argument("--rules-path", required=True)
-    parser.add_argument("--mihomo-bin", default="/usr/bin/mihomo")
+    parser.add_argument("--mihomo-bin", default=None)
     parser.add_argument("--service")
     parser.add_argument("--no-restart", action="store_true")
     global args
@@ -237,8 +243,7 @@ def main():
         raise SystemExit("请用 root 运行，例如 sudo python3 configure-direct-rules.py ...")
     if not config_path.is_file():
         raise SystemExit("找不到配置文件：%s" % config_path)
-    if not Path(args.mihomo_bin).is_file():
-        raise SystemExit("找不到 mihomo：%s" % args.mihomo_bin)
+    mihomo_bin = resolve_mihomo_bin(args.mihomo_bin)
     prepare_rules_path(config_path)
 
     original = config_path.read_text(encoding="utf-8")
@@ -256,7 +261,7 @@ def main():
     try:
         config_path.write_text(updated, encoding="utf-8")
         os.chmod(config_path, mode)
-        validate(config_path, args.mihomo_bin)
+        validate(config_path, mihomo_bin)
     except Exception:
         shutil.copy2(backup, config_path)
         os.chmod(config_path, mode)

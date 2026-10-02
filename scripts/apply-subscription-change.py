@@ -11,6 +11,14 @@ import time
 import urllib.parse
 from pathlib import Path
 
+try:
+    from admin_common import resolve_mihomo_bin
+except ImportError:  # run straight from a checkout: scripts/ is not on sys.path
+    import sys
+
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from admin_common import resolve_mihomo_bin
+
 
 NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 
@@ -134,7 +142,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", default="/etc/mihomo/config.yaml")
     parser.add_argument("--op-file", required=True)
-    parser.add_argument("--mihomo-bin", default="/usr/bin/mihomo")
+    parser.add_argument("--mihomo-bin", default=None)
     parser.add_argument("--service")
     parser.add_argument("--no-restart", action="store_true")
     args = parser.parse_args()
@@ -146,6 +154,7 @@ def main():
     op_path = Path(args.op_file)
     if not config_path.is_file() or not op_path.is_file():
         raise SystemExit("找不到配置文件或待应用操作")
+    mihomo_bin = resolve_mihomo_bin(args.mihomo_bin)
 
     op = validate_op(json.loads(op_path.read_text(encoding="utf-8")))
     original = config_path.read_text(encoding="utf-8")
@@ -168,7 +177,7 @@ def main():
     try:
         config_path.write_text(updated, encoding="utf-8")
         os.chmod(config_path, mode)
-        validate_config(config_path, args.mihomo_bin)
+        validate_config(config_path, mihomo_bin)
     except Exception:
         shutil.copy2(backup, config_path)
         os.chmod(config_path, mode)
