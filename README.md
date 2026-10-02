@@ -12,8 +12,8 @@ plugin (MIT). The Python helper is reused unchanged; the UI is native to DMS.
 
 ## What it does
 
-- Install mihomo and write a TUN-capable `/etc/mihomo/config.yaml`, the
-  controller secret, and the plugin's DIRECT rule provider — `install.sh`.
+- Write a TUN-capable `/etc/mihomo/config.yaml`, the controller secret, and the
+  plugin's DIRECT rule provider — `install.sh`.
 - Start / stop `mihomo.service` from a bar pill (left click opens the panel).
 - Switch rule / global / direct mode.
 - Browse proxy groups and pick a node.
@@ -24,6 +24,11 @@ plugin (MIT). The Python helper is reused unchanged; the UI is native to DMS.
 ## Requirements
 
 - Linux with systemd, and a running mihomo external controller.
+- `mihomo` installed and on `PATH`. `install.sh` no longer installs packages
+  (running an AUR helper as root is rejected by makepkg, and package managers
+  differ per distro); install mihomo yourself first — Arch: `paru -S mihomo-bin`,
+  otherwise the [upstream releases](https://github.com/MetaCubeX/mihomo/releases)
+  or your distro's package manager.
 - `python3` and `systemctl` on `PATH`.
 - Permission to `systemctl start/stop` the unit (a narrow polkit rule; the
   plugin never runs `sudo`).
@@ -42,7 +47,7 @@ nyxdeck mihomo status
 Directly, from a checkout:
 
 ```sh
-sudo ./install.sh               # mihomo + config + DIRECT provider + dashboard + unit
+sudo ./install.sh               # config + DIRECT provider + dashboard + unit (mihomo must be installed)
 sudo ./scripts/install-dashboard.sh   # dashboard only
 ```
 
@@ -73,7 +78,7 @@ URL, secret file, unit name, and polling interval.
 
 ```
 plugin.json            DMS plugin manifest
-MihomoService.qml      daemon: polls status, exposes `dms ipc call mihomoTun ...`
+MihomoService.qml      daemon: polls the controller (light `watch`; full `status` on demand), exposes `dms ipc call mihomoTun ...`
 MihomoWidget.qml       bar pill + popout
 MihomoPanel.qml        popout panel (overview / subscriptions / direct rules)
 MihomoSettings.qml     settings page

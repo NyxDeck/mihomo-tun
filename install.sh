@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Mihomo TUN (DMS) — full install and configuration flow.
 #
-# Installs the mihomo binary, writes a TUN-capable /etc/mihomo/config.yaml and
+# Writes a TUN-capable /etc/mihomo/config.yaml and
 # the controller secret, registers the plugin's DIRECT rule provider, drops a
 # local dashboard into /etc/mihomo/ui, and enables the systemd unit.
 # Idempotent: an existing config is never replaced unless --force is given.
@@ -57,21 +57,11 @@ step "$(msg "检查 mihomo" "Checking mihomo")"
 if command -v mihomo >/dev/null 2>&1; then
     ok "$(msg "已安装: $(command -v mihomo)" "installed: $(command -v mihomo)")"
 else
-    msg "mihomo $(msg "未安装，尝试安装 mihomo-bin" "is missing; installing mihomo-bin")"
-    helper=""
-    for c in paru yay; do
-        command -v "$c" >/dev/null 2>&1 && { helper="$c"; break; }
-    done
-    if [ -n "$helper" ]; then
-        "$helper" -S --needed --noconfirm mihomo-bin
-    elif pacman -Si mihomo >/dev/null 2>&1; then
-        pacman -S --needed --noconfirm mihomo
-    else
-        die "$(msg "未找到 paru/yay，且仓库里没有 mihomo；请先装一个 AUR helper" \
-                "no paru/yay and no repo package named mihomo; install an AUR helper first")"
-    fi
-    command -v mihomo >/dev/null 2>&1 || die "$(msg "mihomo 仍不可用" "mihomo still unavailable")"
-    ok "$(msg "mihomo 安装完成" "mihomo installed")"
+    # The installer never installs packages: running an AUR helper as root is
+    # rejected by makepkg, and pkg managers are distro specific. Install mihomo
+    # yourself, then re-run. This keeps the script distro-agnostic.
+    die "$(msg "PATH 里没有 mihomo；请先用发行版的包管理器安装，再重新运行 install.sh（Arch: paru -S mihomo-bin，或上游 releases）" \
+            "mihomo is not on PATH; install it with your distro's package manager first (Arch: paru -S mihomo-bin, or the upstream releases), then re-run install.sh")"
 fi
 
 # ── 2. directory + secret ────────────────────────────────────────────────────
