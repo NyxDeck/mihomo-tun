@@ -36,6 +36,15 @@ DELAY_TEST_URL = os.environ.get("MIHOMO_DELAY_URL", "https://www.gstatic.com/gen
 CONFIG_FILE = os.environ.get("MIHOMO_CONFIG_FILE", "/etc/mihomo/config.yaml")
 
 
+def mihomo_binary():
+    """mihomo on PATH, unless MIHOMO_BIN overrides it.
+
+    package managers put it in /usr/bin, the upstream releases in
+    /usr/local/bin; hardcoding either breaks validation for the other.
+    """
+    return os.environ.get("MIHOMO_BIN") or shutil.which("mihomo") or "/usr/bin/mihomo"
+
+
 def default_plugin_data_dir():
     base = os.environ.get("XDG_STATE_HOME") or os.path.expanduser("~/.local/state")
     return os.path.join(base, "nyxdeck", "plugins", "mihomo-tun")
@@ -542,7 +551,7 @@ def apply_subscription_change(op):
         helper,
         "--config", CONFIG_FILE,
         "--op-file", SUBSCRIPTION_OP_FILE,
-        "--mihomo-bin", os.environ.get("MIHOMO_BIN", "/usr/bin/mihomo"),
+        "--mihomo-bin", mihomo_binary(),
         "--service", UNIT,
     ]
     try:
@@ -596,10 +605,11 @@ def cmd_subscription_delete(argv):
 
 def direct_setup_command():
     helper = os.path.join(os.path.dirname(os.path.abspath(__file__)), "configure-direct-rules.py")
-    return "sudo python3 %s --config %s --rules-path %s --mihomo-bin /usr/bin/mihomo --service %s" % (
+    return "sudo python3 %s --config %s --rules-path %s --mihomo-bin %s --service %s" % (
         shlex.quote(helper),
         shlex.quote(CONFIG_FILE),
         shlex.quote(DIRECT_PROVIDER_FILE),
+        shlex.quote(mihomo_binary()),
         shlex.quote(UNIT),
     )
 
