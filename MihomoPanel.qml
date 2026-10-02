@@ -152,6 +152,7 @@ Item {
         "provider_update_failed": "Updating the subscription failed",
         "providers_update_failed": "Updating the subscriptions failed",
         "no_pkexec": "pkexec is missing, so admin configuration cannot run",
+        "no_admin_helper": "The privileged helper is not installed; re-run install.sh",
         "admin_timeout": "The admin helper timed out",
         "admin_failed": "The admin helper failed or was cancelled",
         "admin_bad_result": "The admin helper returned nothing usable",
@@ -577,7 +578,7 @@ Item {
                     }
                 }
 
-                ListView {
+                DankListView {
                     id: nodeList
 
                     width: parent.width
@@ -892,7 +893,7 @@ Item {
                 color: Theme.surfaceVariantText
             }
 
-            ListView {
+            DankListView {
                 id: directList
 
                 width: parent.width

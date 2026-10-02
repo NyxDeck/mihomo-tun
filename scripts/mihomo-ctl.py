@@ -34,15 +34,24 @@ TIMEOUT = float(os.environ.get("MIHOMO_API_TIMEOUT", "6"))
 MAX_NODES = int(os.environ.get("MIHOMO_MAX_NODES", "60"))
 DELAY_TEST_URL = os.environ.get("MIHOMO_DELAY_URL", "https://www.gstatic.com/generate_204")
 CONFIG_FILE = os.environ.get("MIHOMO_CONFIG_FILE", "/etc/mihomo/config.yaml")
+ADMIN_DIR = os.environ.get("MIHOMO_ADMIN_DIR", "/usr/local/libexec/mihomo-tun")
 
 
-def mihomo_binary():
-    """mihomo on PATH, unless MIHOMO_BIN overrides it.
+def installed_admin_helper(name):
+    """A root-owned helper installed by install.sh, or "" if it is missing.
 
-    package managers put it in /usr/bin, the upstream releases in
-    /usr/local/bin; hardcoding either breaks validation for the other.
+    pkexec must run a root-owned binary: the plugin directory is user-writable,
+    so running a script from there would let any local process execute
+    arbitrary code as root behind the polkit prompt.
     """
-    return os.environ.get("MIHOMO_BIN") or shutil.which("mihomo") or "/usr/bin/mihomo"
+    path = os.path.join(ADMIN_DIR, name)
+    try:
+        info = os.stat(path)
+    except OSError:
+        return ""
+    if info.st_uid != 0 or (info.st_mode & 0o022):
+        return ""
+    return path
 
 
 def default_plugin_data_dir():
@@ -93,6 +102,7 @@ FAILURE_CODES = (
     ("更新订阅", "provider_update_failed"),
     ("provider-update 需要", "usage_provider_update"),
     ("找不到 pkexec", "no_pkexec"),
+    ("未安装 root 助手", "no_admin_helper"),
     ("管理员配置操作超时", "admin_timeout"),
     ("管理员配置操作被取消", "admin_failed"),
     ("配置助手没有返回有效结果", "admin_bad_result"),
@@ -543,15 +553,15 @@ def apply_subscription_change(op):
     pkexec = os.environ.get("MIHOMO_PKEXEC") or shutil.which("pkexec")
     if not pkexec:
         fail("找不到 pkexec，无法执行需要管理员授权的配置更新")
-    helper = os.path.join(os.path.dirname(os.path.abspath(__file__)), "apply-subscription-change.py")
+    helper = installed_admin_helper("apply-subscription-change.py")
+    if not helper:
+        fail("未安装 root 助手，无法执行需要管理员授权的配置更新（请重新运行 install.sh）")
     write_json_atomic(SUBSCRIPTION_OP_FILE, op)
     command = [
         pkexec,
-        sys.executable,
         helper,
         "--config", CONFIG_FILE,
         "--op-file", SUBSCRIPTION_OP_FILE,
-        "--mihomo-bin", mihomo_binary(),
         "--service", UNIT,
     ]
     try:
@@ -604,12 +614,15 @@ def cmd_subscription_delete(argv):
 
 
 def direct_setup_command():
-    helper = os.path.join(os.path.dirname(os.path.abspath(__file__)), "configure-direct-rules.py")
-    return "sudo python3 %s --config %s --rules-path %s --mihomo-bin %s --service %s" % (
+    # Prefer the root-owned copy install.sh drops in /usr/local/libexec; fall
+    # back to the checkout only when the installer has not run yet.
+    helper = installed_admin_helper("configure-direct-rules.py")
+    if not helper:
+        helper = os.path.join(os.path.dirname(os.path.abspath(__file__)), "configure-direct-rules.py")
+    return "sudo %s --config %s --rules-path %s --service %s" % (
         shlex.quote(helper),
         shlex.quote(CONFIG_FILE),
         shlex.quote(DIRECT_PROVIDER_FILE),
-        shlex.quote(mihomo_binary()),
         shlex.quote(UNIT),
     )
 

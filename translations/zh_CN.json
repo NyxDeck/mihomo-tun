@@ -323,6 +323,9 @@
     "systemd unit": {
         "systemd unit": "systemd 单元"
     },
+    "The privileged helper is not installed; re-run install.sh": {
+        "The privileged helper is not installed; re-run install.sh": "未安装特权助手，请重新运行 install.sh"
+    },
     "unknown": {
         "unknown": "未知"
     }
