@@ -32,6 +32,8 @@ plugin (MIT). The Python helper is reused unchanged; the UI is native to DMS.
 - `python3` and `systemctl` on `PATH`.
 - Permission to `systemctl start/stop` the unit (a narrow polkit rule; the
   plugin never runs `sudo`).
+- `pkexec`/polkit for subscription and DIRECT-rule edits, which change the
+  root-owned config.
 
 ## Install
 
@@ -87,6 +89,7 @@ scripts/install-dashboard.sh  install metacubexd + external-ui
 scripts/mihomo-ctl.py  controller backend (one JSON object per call)
 scripts/configure-direct-rules.py    root DIRECT rule-provider setup
 scripts/apply-subscription-change.py subscription edits
+scripts/admin_common.py              root helpers' trusted-path resolution
 ```
 
 The backend is usable on its own:
@@ -103,19 +106,25 @@ python3 scripts/mihomo-ctl.py ip
 ## Security model
 
 The controller secret lives at `/etc/mihomo/.controller-secret`. The installer
-creates it `0640` and puts it in the group of the user who ran it (via
-`SUDO_UID`/`PKEXEC_UID`), because the plugin reads it as that user — a `0600`
-root-owned file makes every controller call fail. If you installed as plain
-root, `sudo chgrp <your group> /etc/mihomo/.controller-secret` is the missing
-step.
+keeps it `0600` and grants read access to the user who ran it through an ACL
+(`setfacl -m u:<user>:r`) rather than their primary group, because the plugin
+reads it as that user — a `0600` root-owned file makes every controller call
+fail, while a group-readable one would expose the secret to every member of a
+possibly shared group. Where `setfacl` is unavailable it falls back to the
+primary group and warns. If you installed as plain root, run
+`sudo setfacl -m u:<user>:r /etc/mihomo/.controller-secret`.
 
 - The controller secret is read from a local file and never stored in the
   plugin settings.
 - Starting and stopping the service is a privileged operation; scope
   systemd/polkit narrowly instead of granting broad passwordless access.
-- Subscription edits change the root-owned mihomo config; the panel asks
-  `pkexec` for a one-time authorization, validates the candidate config, and
-  restarts mihomo.
+- Subscription edits change the root-owned mihomo config. The installer places
+  the helpers under `/usr/local/libexec/mihomo-tun` (root-owned) and a polkit
+  action next to them, so `pkexec` runs a root-owned program — never a script
+  from the user-writable plugin directory — with a prompt that names the action
+  instead of a bare `python3`. The helpers validate the candidate config
+  themselves and resolve `mihomo` to a root-owned, non-writable binary before
+  using it.
 
 ## Languages
 

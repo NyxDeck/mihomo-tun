@@ -81,24 +81,81 @@ PY
 fi
 
 # The plugin reads the secret as the invoking user, and /etc/mihomo is root
-# only, so the file has to be readable through their group: without this every
-# controller call fails right after a fresh install. Applied to an existing
-# secret too, so re-running the installer repairs an old one.
+# only, so the file has to be readable by that user: without this every
+# controller call fails right after a fresh install. Grant it through an ACL on
+# that one user rather than their primary group — on distros where the primary
+# group is shared (e.g. `users`) a group readable file exposes the secret, and
+# with it control of the proxy, to every other local account. Applied to an
+# existing secret too, so re-running the installer repairs an old one.
 secret_owner_uid="${SUDO_UID:-}${PKEXEC_UID:-}"
-secret_group=""
+secret_user=""
 if [ -n "$secret_owner_uid" ]; then
-    secret_group="$(id -gn "$secret_owner_uid" 2>/dev/null || true)"
+    secret_user="$(id -un "$secret_owner_uid" 2>/dev/null || true)"
 fi
-chmod 640 "$SECRET_FILE"
-if [ -n "$secret_group" ]; then
-    chown "root:$secret_group" "$SECRET_FILE" 2>/dev/null || true
+chmod 600 "$SECRET_FILE"
+if [ -n "$secret_user" ] && command -v setfacl >/dev/null 2>&1 \
+        && setfacl -m "u:$secret_user:r" "$SECRET_FILE" 2>/dev/null; then
+    ok "$(msg "密钥仅 root 与 $secret_user 可读（ACL）" \
+            "secret readable by root and $secret_user only (ACL)")"
+elif [ -n "$secret_user" ]; then
+    # No ACL support: fall back to the primary group, and say why that is worse.
+    secret_group="$(id -gn "$secret_user" 2>/dev/null || true)"
+    if [ -n "$secret_group" ] && chown "root:$secret_group" "$SECRET_FILE" 2>/dev/null; then
+        chmod 640 "$SECRET_FILE"
+        warn "$(msg "没有 setfacl，改用组 $secret_group；若该组不止你一人，控制器密钥会对其余成员可见，请改用专用组" \
+                "setfacl unavailable; using group $secret_group — if that group has other members they can read the controller secret; use a dedicated group")"
+    else
+        warn "$(msg "无法授权给用户，控制器调用会失败；请执行：sudo setfacl -m u:$secret_user:r $SECRET_FILE" \
+                "could not grant access; run: sudo setfacl -m u:$secret_user:r $SECRET_FILE")"
+    fi
 else
-    warn "$(msg "无法判断你的用户组，请自己执行：sudo chgrp $(id -gn 2>/dev/null || echo 你的组) $SECRET_FILE" \
-            "could not work out your group; run: sudo chgrp <your group> $SECRET_FILE")"
+    warn "$(msg "无法判断你的用户，请自行授权：sudo setfacl -m u:<user>:r $SECRET_FILE" \
+            "could not determine your user; run: sudo setfacl -m u:<user>:r $SECRET_FILE")"
 fi
 SECRET="$(cat "$SECRET_FILE")"
 
-# ── 3. config.yaml ───────────────────────────────────────────────────────────
+# ── 3. root helpers + polkit action ──────────────────────────────────────────
+step "$(msg "安装 root 助手" "Installing the root helpers")"
+HELPER_DIR="/usr/local/libexec/mihomo-tun"
+mkdir -p "$HELPER_DIR"
+chown root:root "$HELPER_DIR"
+chmod 0755 "$HELPER_DIR"
+# root-owned copies: pkexec must not run a script from the user-writable plugin
+# directory, which any local process could rewrite.
+for helper in admin_common.py apply-subscription-change.py configure-direct-rules.py; do
+    install -o root -g root -m 0755 "$REPO_DIR/scripts/$helper" "$HELPER_DIR/$helper"
+done
+ok "$(msg "助手已安装到 $HELPER_DIR（root 拥有）" "helpers installed under $HELPER_DIR (root-owned)")"
+
+POLICY_DIR="/usr/share/polkit-1/actions"
+POLICY_FILE="$POLICY_DIR/io.github.nyxdeck.mihomo-tun.policy"
+if [ -d "$POLICY_DIR" ]; then
+    cat > "$POLICY_FILE" <<POLICY
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE policyconfig PUBLIC "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
+ "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
+<policyconfig>
+  <vendor>NyxDeck</vendor>
+  <action id="io.github.nyxdeck.mihomo-tun.apply-subscription">
+    <description>Edit the Mihomo configuration</description>
+    <message>Authentication is required to change Mihomo subscriptions</message>
+    <defaults>
+      <allow_any>no</allow_any>
+      <allow_inactive>no</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">$HELPER_DIR/apply-subscription-change.py</annotate>
+  </action>
+</policyconfig>
+POLICY
+    chmod 0644 "$POLICY_FILE"
+    ok "$(msg "polkit 授权已安装" "polkit action installed")"
+else
+    warn "$(msg "未找到 $POLICY_DIR，跳过 polkit 授权（pkexec 仍会提示，文案为默认）" \
+            "$POLICY_DIR not found; skipping the polkit action (pkexec still prompts, with the default text)")"
+fi
+
+# ── 4. config.yaml ───────────────────────────────────────────────────────────
 step "$(msg "写入 config.yaml" "Writing config.yaml")"
 if [ -s "$CONFIG_FILE" ] && [ "$FORCE" -ne 1 ]; then
     warn "$(msg "已存在 $CONFIG_FILE，保留不动（--force 可覆盖）" \
@@ -153,13 +210,12 @@ YAML
             "wrote the base config (TUN + controller + fake-ip DNS)")"
 fi
 
-# ── 4. DIRECT rule provider ──────────────────────────────────────────────────
+# ── 5. DIRECT rule provider ──────────────────────────────────────────────────
 step "$(msg "注册 DIRECT 规则 provider" "Registering the DIRECT rule provider")"
 set +e
-python3 "$REPO_DIR/scripts/configure-direct-rules.py" \
+python3 "$HELPER_DIR/configure-direct-rules.py" \
     --config "$CONFIG_FILE" \
     --rules-path "$RULES_FILE" \
-    --mihomo-bin "$(command -v mihomo)" \
     --service "$UNIT" 2>&1 | sed 's/^/  /'
 rc=${PIPESTATUS[0]}
 set -e
@@ -171,7 +227,7 @@ else
             "provider setup failed (retry later from the panel)")"
 fi
 
-# ── 5. local dashboard ───────────────────────────────────────────────────────
+# ── 6. local dashboard ───────────────────────────────────────────────────────
 if [ "$NO_DASHBOARD" -eq 1 ]; then
     warn "$(msg "按要求跳过本地控制面板（--no-dashboard）" \
             "skipping the local dashboard (--no-dashboard)")"
@@ -191,7 +247,7 @@ else
     fi
 fi
 
-# ── 6. service ───────────────────────────────────────────────────────────────
+# ── 7. service ───────────────────────────────────────────────────────────────
 step "$(msg "启用 systemd 服务" "Enabling the systemd unit")"
 systemctl enable "$UNIT" >/dev/null 2>&1 || true
 if [ "$NO_START" -eq 1 ]; then
