@@ -14,6 +14,12 @@ Item {
 
     readonly property int pad: Theme.spacingM
 
+    // Control metrics derived from Theme so they follow the shell's sizing
+    // (font/icon scale) instead of fixed pixels.
+    readonly property int chipHeight: Theme.iconSize + Theme.spacingXS   // 28
+    readonly property int rowHeight: Theme.iconSize + Theme.spacingS     // 32
+    readonly property int listMaxHeight: rowHeight * 6                   // 192
+
     implicitWidth: 424
     implicitHeight: mainColumn.implicitHeight + pad * 2
 
@@ -330,8 +336,8 @@ Item {
         signal tapped
 
         implicitWidth: chipRow.implicitWidth + Theme.spacingM * 2
-        implicitHeight: 28
-        radius: 14
+        implicitHeight: panel.chipHeight
+        radius: panel.chipHeight / 2
         opacity: chip.enabled ? 1 : 0.5
 
         readonly property color accent: danger ? Theme.error : Theme.primary
@@ -411,7 +417,7 @@ Item {
         // header
         RowLayout {
             width: parent.width
-            height: 32
+            height: panel.rowHeight
             spacing: Theme.spacingS
 
             StyledText {
@@ -425,7 +431,7 @@ Item {
             DankIcon {
                 visible: panel.busy
                 name: "progress_activity"
-                size: 16
+                size: Theme.iconSizeSmall
                 color: Theme.surfaceVariantText
                 Layout.alignment: Qt.AlignVCenter
 
@@ -506,7 +512,7 @@ Item {
                 }
                 DankFilterChips {
                     width: parent.width
-                    chipHeight: 28
+                    chipHeight: panel.chipHeight
                     model: [
                         {
                             "value": "rule",
@@ -535,7 +541,7 @@ Item {
                 }
                 DankFilterChips {
                     width: parent.width
-                    chipHeight: 28
+                    chipHeight: panel.chipHeight
                     model: panel.groups
                     currentIndex: Math.max(0, panel.groups.indexOf(panel.group))
                     onSelectionChanged: index => {
@@ -575,7 +581,7 @@ Item {
                     id: nodeList
 
                     width: parent.width
-                    height: Math.min(192, Math.max(32, panel.nodes.length * 32))
+                    height: Math.min(panel.listMaxHeight, Math.max(panel.rowHeight, panel.nodes.length * panel.rowHeight))
                     clip: true
                     spacing: 0
                     model: panel.nodes
@@ -587,8 +593,8 @@ Item {
                         readonly property bool current: panel.shortNode(panel.snap.now ?? "") === panel.shortNode(modelData.name)
 
                         width: nodeList.width
-                        height: 32
-                        radius: 8
+                        height: panel.rowHeight
+                        radius: Theme.cornerRadius
                         color: current ? Theme.primaryHoverLight : nodeMouse.containsMouse ? Theme.surfaceHover : "transparent"
 
                         RowLayout {
@@ -705,14 +711,14 @@ Item {
 
                         width: parent.width
                         implicitHeight: providerColumn.implicitHeight + Theme.spacingS * 2
-                        radius: 8
+                        radius: Theme.cornerRadius
                         color: Theme.surfaceLight
 
                         Column {
                             id: providerColumn
                             anchors.fill: parent
                             anchors.margins: Theme.spacingS
-                            spacing: 2
+                            spacing: Theme.spacingXXS
 
                             RowLayout {
                                 width: parent.width
@@ -857,7 +863,7 @@ Item {
 
                 DankIcon {
                     name: panel.directConfigured ? "check_circle" : "info"
-                    size: 16
+                    size: Theme.iconSizeSmall
                     color: panel.directConfigured ? Theme.primary : Theme.error
                     Layout.alignment: Qt.AlignVCenter
                 }
@@ -890,7 +896,7 @@ Item {
                 id: directList
 
                 width: parent.width
-                height: Math.min(192, Math.max(1, panel.directEntries.length * 32))
+                height: Math.min(panel.listMaxHeight, Math.max(panel.rowHeight, panel.directEntries.length * panel.rowHeight))
                 visible: panel.directEntries.length > 0
                 clip: true
                 spacing: 0
@@ -903,8 +909,8 @@ Item {
                     required property var modelData
 
                     width: directList.width
-                    height: 32
-                    radius: 8
+                    height: panel.rowHeight
+                    radius: Theme.cornerRadius
                     color: directHover.hovered ? Theme.surfaceHover : "transparent"
 
                     HoverHandler {

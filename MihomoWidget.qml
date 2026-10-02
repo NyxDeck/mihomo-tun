@@ -14,6 +14,11 @@ PluginComponent {
 
     readonly property bool showLabel: SettingsData.getPluginSetting(pluginId, "show_label", true) !== false
 
+    // Cap the node name so a long one cannot stretch the bar. Expressed in font
+    // units (~9 small characters) so it follows the shell font scale instead of
+    // a fixed pixel width.
+    readonly property real labelMaxWidth: Theme.fontSizeSmall * 9
+
     // The daemon owns the polling and publishes the snapshot; a bar widget only
     // renders it. Spawning `mihomo-ctl.py status` from here ran once per widget
     // instance on a 5 s timer, on top of the daemon doing exactly the same.
@@ -49,14 +54,14 @@ PluginComponent {
                 color: root.active ? Theme.primary : Theme.widgetIconColor
             }
 
-            Text {
+            StyledText {
                 visible: root.showLabel && root.nowName.length > 0
                 anchors.verticalCenter: parent.verticalCenter
                 text: root.nowName
                 color: Theme.widgetTextColor
                 font.pixelSize: Theme.fontSizeSmall
                 elide: Text.ElideRight
-                width: Math.min(implicitWidth, 110)
+                width: Math.min(implicitWidth, root.labelMaxWidth)
             }
         }
     }
