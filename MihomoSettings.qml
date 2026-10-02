@@ -40,8 +40,8 @@ PluginSettings {
     StringSetting {
         settingKey: "refresh_ms"
         label: I18n.trFor("mihomoTun", "Refresh (ms)")
-        description: I18n.trFor("mihomoTun", "Status polling interval.")
-        defaultValue: "5000"
+        description: I18n.trFor("mihomoTun", "Bar polling interval (lightweight); the panel refreshes fully while open.")
+        defaultValue: "15000"
     }
     StringSetting {
         settingKey: "max_nodes"

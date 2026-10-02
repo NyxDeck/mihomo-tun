@@ -8,6 +8,10 @@ import qs.Widgets
 // Daemon: polls the mihomo controller through scripts/mihomo-ctl.py, publishes
 // the snapshot for the bar widgets to render, and exposes IPC actions. One
 // poller for the shell, however many widgets are on screen.
+//
+// The periodic poll is the lightweight `watch` subcommand (service + selected
+// node only). The full `status` snapshot — groups, nodes, mode, version — runs
+// on demand for IPC; the panel fetches it itself while it is open.
 PluginComponent {
     id: daemon
 
@@ -34,7 +38,7 @@ PluginComponent {
     }
 
     readonly property string pythonBin: setting("python_bin", "python3")
-    readonly property int refreshMs: setting("refresh_ms", 5000)
+    readonly property int refreshMs: setting("refresh_ms", 15000)
     readonly property string controller: setting("controller", "http://127.0.0.1:9090")
     readonly property string secretFile: setting("secret_file", "/etc/mihomo/.controller-secret")
     readonly property string unit: setting("unit", "mihomo.service")
@@ -54,6 +58,11 @@ PluginComponent {
     readonly property bool reachable: snapshot.ok === true
 
     function refresh() {
+        watchProc.running = false;
+        watchProc.running = true;
+    }
+
+    function refreshFull() {
         statusProc.running = false;
         statusProc.running = true;
     }
@@ -66,6 +75,25 @@ PluginComponent {
         actionProc._refresh = true;
     }
 
+    // Lightweight: service state and the selected node only, for the bar pill.
+    Process {
+        id: watchProc
+        command: [daemon.pythonBin, daemon.helper, "watch"]
+        environment: daemon.env
+        stdout: SplitParser {
+            splitMarker: "\n"
+            onRead: line => {
+                try {
+                    daemon.publish(JSON.parse(line));
+                } catch (e) {
+                    daemon.publish({ ok: false, error: "bad json" });
+                }
+            }
+        }
+    }
+
+    // Full snapshot (groups, nodes, mode, version). On demand for IPC; the panel
+    // runs its own `status` while it is open.
     Process {
         id: statusProc
         command: [daemon.pythonBin, daemon.helper, "status"]
@@ -82,18 +110,13 @@ PluginComponent {
         }
     }
 
+    // Actions must not publish their own (partial) JSON into the shared
+    // snapshot: it lacks service/now, so the bar pill would blank out until the
+    // next poll. A watch refresh after the action republishes instead.
     Process {
         id: actionProc
         property bool _refresh: false
         environment: daemon.env
-        stdout: SplitParser {
-            splitMarker: "\n"
-            onRead: line => {
-                try {
-                    daemon.publish(JSON.parse(line));
-                } catch (e) { /* keep the old snapshot */ }
-            }
-        }
         onRunningChanged: {
             if (!running && _refresh) {
                 _refresh = false;
@@ -127,7 +150,7 @@ PluginComponent {
             return daemon.active ? "stopping" : "starting";
         }
         function status(): string {
-            daemon.refresh();
+            daemon.refreshFull();
             return JSON.stringify(daemon.snapshot);
         }
         function mode(m: string): string {
