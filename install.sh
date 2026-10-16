@@ -116,43 +116,16 @@ SECRET="$(cat "$SECRET_FILE")"
 
 # ── 3. root helpers + polkit action ──────────────────────────────────────────
 step "$(msg "安装 root 助手" "Installing the root helpers")"
-HELPER_DIR="/usr/local/libexec/mihomo-tun"
-mkdir -p "$HELPER_DIR"
-chown root:root "$HELPER_DIR"
-chmod 0755 "$HELPER_DIR"
-# root-owned copies: pkexec must not run a script from the user-writable plugin
-# directory, which any local process could rewrite.
-for helper in admin_common.py apply-subscription-change.py configure-direct-rules.py; do
-    install -o root -g root -m 0755 "$REPO_DIR/scripts/$helper" "$HELPER_DIR/$helper"
-done
-ok "$(msg "助手已安装到 $HELPER_DIR（root 拥有）" "helpers installed under $HELPER_DIR (root-owned)")"
-
-POLICY_DIR="/usr/share/polkit-1/actions"
-POLICY_FILE="$POLICY_DIR/io.github.nyxdeck.mihomo-tun.policy"
-if [ -d "$POLICY_DIR" ]; then
-    cat > "$POLICY_FILE" <<POLICY
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE policyconfig PUBLIC "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
- "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
-<policyconfig>
-  <vendor>NyxDeck</vendor>
-  <action id="io.github.nyxdeck.mihomo-tun.apply-subscription">
-    <description>Edit the Mihomo configuration</description>
-    <message>Authentication is required to change Mihomo subscriptions</message>
-    <defaults>
-      <allow_any>no</allow_any>
-      <allow_inactive>no</allow_inactive>
-      <allow_active>auth_admin_keep</allow_active>
-    </defaults>
-    <annotate key="org.freedesktop.policykit.exec.path">$HELPER_DIR/apply-subscription-change.py</annotate>
-  </action>
-</policyconfig>
-POLICY
-    chmod 0644 "$POLICY_FILE"
-    ok "$(msg "polkit 授权已安装" "polkit action installed")"
+set +e
+bash "$REPO_DIR/scripts/install-helpers.sh" 2>&1 | sed 's/^/  /'
+rc=${PIPESTATUS[0]}
+set -e
+if [ "$rc" -eq 0 ]; then
+    ok "$(msg "订阅编辑所需的 root 助手就绪" \
+            "root helpers for subscription editing are ready")"
 else
-    warn "$(msg "未找到 $POLICY_DIR，跳过 polkit 授权（pkexec 仍会提示，文案为默认）" \
-            "$POLICY_DIR not found; skipping the polkit action (pkexec still prompts, with the default text)")"
+    warn "$(msg "root 助手安装失败；面板能打开，但订阅增删改会被拒（no admin helper）" \
+            "helper install failed; the panel opens but subscription edits are refused (no admin helper)")"
 fi
 
 # ── 4. config.yaml ───────────────────────────────────────────────────────────
