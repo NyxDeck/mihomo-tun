@@ -1,5 +1,12 @@
 #!/usr/bin/env python3
-"""Apply one managed Mihomo proxy-provider change with root privileges."""
+"""Apply one managed Mihomo proxy-provider change with root privileges.
+
+A change is never just the provider: a provider nobody references is invisible.
+Adding a subscription therefore also installs a same-named `select` group (wrapped
+in BEGIN/END markers so it can be removed again) and wires that group into the
+PROXY selector, which is what makes "add a subscription in the panel, then pick a
+node" work end to end. Removing a subscription takes all three back out.
+"""
 
 import argparse
 import json
@@ -103,6 +110,121 @@ def upsert_provider(lines, name, url):
     return lines
 
 
+# ── 策略组接线 ────────────────────────────────────────────────────────────────
+# 订阅自己带的一组节点只有被某个策略组引用才用得上。这里托管一个同名 select
+# 组，用 BEGIN/END 注释圈起来，保证能被精确删掉、也看得出手写的同名组不是我们的。
+GROUP_BEGIN = "  # BEGIN Mihomo TUN Control subscription group: %s"
+GROUP_END = "  # END Mihomo TUN Control subscription group: %s"
+
+
+def group_blocks(lines, start, end):
+    """[(组名, 起始行, 结束行)] —— proxy-groups 里每个 `  - name: X` 块。"""
+    blocks = []
+    index = start
+    while index < end:
+        match = re.match(r"^  - name:\s*['\"]?(.+?)['\"]?\s*$", lines[index])
+        if not match:
+            index += 1
+            continue
+        block_end = index + 1
+        while block_end < end and not re.match(r"^  - name:\s*", lines[block_end]):
+            block_end += 1
+        blocks.append((match.group(1).strip(), index, block_end))
+        index = block_end
+    return blocks
+
+
+def managed_group_block(name):
+    return [
+        GROUP_BEGIN % name,
+        "  - name: " + name,
+        "    type: select",
+        "    use: [" + name + "]",
+        "    proxies: [DIRECT]",
+        GROUP_END % name,
+    ]
+
+
+def remove_managed_group(lines, name):
+    begin, end = GROUP_BEGIN % name, GROUP_END % name
+    kept, inside = [], False
+    for line in lines:
+        if line == begin:
+            inside = True
+            continue
+        if line == end:
+            inside = False
+            continue
+        if not inside:
+            kept.append(line)
+    return kept
+
+
+def group_defined(lines, name):
+    section = find_section(lines, "proxy-groups")
+    if section is None:
+        return False
+    start, end = section
+    return any(group == name for group, _, _ in group_blocks(lines, start, end))
+
+
+def proxy_group(lines):
+    section = find_section(lines, "proxy-groups")
+    if section is None:
+        return None
+    start, end = section
+    for group, block_start, block_end in group_blocks(lines, start, end):
+        if group == "PROXY":
+            return block_start, block_end
+    return None
+
+
+def set_proxy_member(lines, name, present):
+    """把 name 加进 / 移出 PROXY 的 proxies 列表（保留原有写法与顺序）。"""
+    block = proxy_group(lines)
+    if block is None:
+        return lines
+    block_start, block_end = block
+    for index in range(block_start, block_end):
+        line = lines[index]
+        if not re.match(r"^\s+proxies:\s*", line):
+            continue
+        head, value = line.split(":", 1)
+        value = value.strip()
+        if value.startswith("[") and value.endswith("]"):
+            items = [item.strip() for item in value[1:-1].split(",") if item.strip()]
+            if present == (name in items):
+                return lines
+            items = ([name] + items) if present else [i for i in items if i != name]
+            lines[index] = head + ": [" + ", ".join(items) + "]"
+            return lines
+        indent = len(line) - len(line.lstrip()) + 2
+        listed = any(existing.strip() == "- " + name for existing in lines[index + 1:block_end])
+        if present and not listed:
+            lines.insert(index + 1, " " * indent + "- " + name)
+        elif not present and listed:
+            for drop in range(index + 1, block_end):
+                if lines[drop].strip() == "- " + name:
+                    del lines[drop]
+                    break
+        return lines
+    if present:
+        lines.insert(block_start + 1, "    proxies: [" + name + "]")
+    return lines
+
+
+def upsert_group(lines, name):
+    lines = remove_managed_group(lines, name)
+    section = find_section(lines, "proxy-groups")
+    if section is None:
+        raise RuntimeError("配置里没有顶层 proxy-groups")
+    start, _ = section
+    # 同名组是手写的就不碰它，只保证 PROXY 引用得到
+    if not group_defined(lines, name):
+        lines[start + 1:start + 1] = managed_group_block(name)
+    return set_proxy_member(lines, name, True)
+
+
 def validate_op(op):
     name = str(op.get("name") or "").strip()
     operation = str(op.get("op") or "").strip()
@@ -162,11 +284,16 @@ def main():
 
     if op["op"] == "delete":
         lines = remove_provider(lines, op["name"])
+        lines = remove_managed_group(lines, op["name"])
+        lines = set_proxy_member(lines, op["name"], False)
     else:
         original_name = op.get("original_name") or ""
         if original_name and original_name != op["name"]:
             lines = remove_provider(lines, original_name)
+            lines = remove_managed_group(lines, original_name)
+            lines = set_proxy_member(lines, original_name, False)
         lines = upsert_provider(lines, op["name"], op["url"])
+        lines = upsert_group(lines, op["name"])
     updated = "\n".join(lines) + "\n"
 
     backup = config_path.with_name(
@@ -190,6 +317,7 @@ def main():
         "ok": True,
         "op": op["op"],
         "name": op["name"],
+        "group": op["name"],
         "backup": str(backup),
     }, ensure_ascii=False))
 
