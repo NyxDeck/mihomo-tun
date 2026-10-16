@@ -86,6 +86,9 @@
     "Global": {
         "Global": "全局"
     },
+    "Group": {
+        "Group": "分组"
+    },
     "Hosted dashboard opened; the secret is in your clipboard": {
         "Hosted dashboard opened; the secret is in your clipboard": "已打开在线面板，密钥在剪贴板里，粘贴即可连接"
     },

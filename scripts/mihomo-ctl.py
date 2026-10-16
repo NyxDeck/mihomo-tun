@@ -78,6 +78,40 @@ IP_ECHOES = [
 GROUP_TYPES = {"Selector", "URLTest", "Fallback", "LoadBalance", "Relay"}
 # mihomo 内置代理，不该出现在"可选节点"列表里
 BUILTIN = {"DIRECT", "REJECT", "REJECT-DROP", "PASS", "PASS-RULE", "COMPATIBLE", "GLOBAL"}
+# 内置项里唯一值得让人从面板点一下的：直连。其余（REJECT/PASS/...）不展示。
+SELECTABLE_BUILTIN = {"DIRECT"}
+HIDDEN_BUILTIN = BUILTIN - SELECTABLE_BUILTIN
+
+
+def node_kind(name, proxies):
+    """面板要给每一行标注类型：策略组 / 直连 / 普通节点。
+
+    为什么要区分：PROXY 的成员里本来就有 AUTO、香港、BV 这些子组，它们既是
+    "可选项"又不是节点。早先 status 直接把它们过滤掉，于是新加的订阅只能以
+    子组的形式存在时，面板里根本没有办法把出口切过去。
+    """
+    if name == "DIRECT":
+        return "direct"
+    meta = proxies.get(name) or {}
+    if meta.get("type") in GROUP_TYPES:
+        return "group"
+    return "node"
+
+
+def group_members(node, proxies):
+    """组里可以选择的东西，去掉面板不该展示的内置项。"""
+    return [name for name in (node.get("all") or []) if name not in HIDDEN_BUILTIN]
+
+
+def node_entries(members, proxies):
+    """统一的节点形状 [{name, kind, delay}]。
+
+    status 与 group 两条路径必须返回同一种形状：QML 的 delegate 读
+    modelData.name，而 group 早先返回的是裸字符串数组，切组之后节点行全是空白，
+    看起来就像"没有节点切换功能"。
+    """
+    return [{"name": name, "kind": node_kind(name, proxies), "delay": None}
+            for name in members]
 
 
 def out(obj, code=0):
@@ -358,8 +392,13 @@ def cmd_watch():
     out(res)
 
 
-def cmd_status():
-    """完整快照：给面板用。节点数按 MIHOMO_MAX_NODES 截断，控制 Luau 解码压力。"""
+def cmd_status(argv):
+    """完整快照：给面板用。节点数按 MIHOMO_MAX_NODES 截断，控制 Luau 解码压力。
+
+    可选参数 <组名>：面板正在看哪个组，刷新时就要哪个组的数据。不传则用 PROXY
+    （没有 PROXY 就用第一个组），保持老调用点不变。
+    """
+    target = argv[0] if argv else ""
     state = service_state()
     res = {"ok": state == "active", "service": state, "version": "", "mode": "",
            "groups": [], "group": "PROXY", "now": "", "nodes": [], "truncated": False,
@@ -375,23 +414,27 @@ def cmd_status():
         groups = [name for name, meta in proxies.items()
                   if meta.get("type") in GROUP_TYPES and name != "GLOBAL"]
         res["groups"] = sorted(groups)
-        group = "PROXY" if "PROXY" in groups else (res["groups"][0] if res["groups"] else "")
+        if target in groups:
+            group = target
+        elif "PROXY" in groups:
+            group = "PROXY"
+        else:
+            group = res["groups"][0] if res["groups"] else ""
         res["group"] = group
         if group:
-            node = api("/proxies/" + urllib.parse.quote(group, safe=""))
+            node = proxies.get(group) or {}
             raw = node.get("now", "") or ""
             if raw in groups:
                 try:
-                    inner = api("/proxies/" + urllib.parse.quote(raw, safe="")).get("now") or ""
+                    inner = (proxies.get(raw) or {}).get("now") or ""
                 except Exception:
                     inner = ""
                 res["now"] = "%s → %s" % (raw, inner) if inner else raw
             else:
                 res["now"] = raw
-            members = [n for n in (node.get("all") or [])
-                       if n not in groups and n not in BUILTIN]
+            members = group_members(node, proxies)
             res["truncated"] = len(members) > MAX_NODES
-            res["nodes"] = [{"name": n, "delay": None} for n in members[:MAX_NODES]]
+            res["nodes"] = node_entries(members[:MAX_NODES], proxies)
     except urllib.error.HTTPError as exc:
         res["ok"], res["error"] = False, "控制器返回 HTTP %s" % exc.code
     except Exception as exc:
@@ -441,13 +484,18 @@ def cmd_select(argv):
 
 
 def group_snapshot(name):
-    node = api("/proxies/" + urllib.parse.quote(name, safe=""))
-    members = [item for item in (node.get("all") or []) if item not in BUILTIN]
+    """某个组的成员与当前选中项，形状与 cmd_status 的 nodes 完全一致。"""
+    proxies = api("/proxies").get("proxies", {})
+    node = proxies.get(name)
+    if node is None:
+        node = api("/proxies/" + urllib.parse.quote(name, safe=""))
+    members = group_members(node, proxies)
     return {
         "ok": True,
+        "view": "group",
         "group": name,
         "now": node.get("now", "") or "",
-        "nodes": members[:MAX_NODES],
+        "nodes": node_entries(members[:MAX_NODES], proxies),
         "truncated": len(members) > MAX_NODES,
     }
 
@@ -737,7 +785,7 @@ def cmd_secret():
 def main():
     argv = sys.argv[1:]
     if not argv or argv[0] in ("-h", "--help"):
-        out({"ok": True, "usage": "watch|status|group <g>|toggle|mode <m>|select <g> <n>|delay [g]"
+        out({"ok": True, "usage": "watch|status [g]|group <g>|toggle|mode <m>|select <g> <n>|delay [g]"
                                   "|providers|provider-update <name|all>|update-provider [name]"
                                   "|subscription-upsert <name> <url> [old]|subscription-delete <name>"
                                   "|direct-list|direct-add <domain|ip>|direct-remove <id>|direct-clear|direct-sync"
@@ -745,7 +793,7 @@ def main():
     cmd, rest = argv[0], argv[1:]
     handlers = {
         "watch": lambda: cmd_watch(),
-        "status": lambda: cmd_status(),
+        "status": lambda: cmd_status(rest),
         "toggle": lambda: cmd_toggle(),
         "mode": lambda: cmd_mode(rest),
         "select": lambda: cmd_select(rest),

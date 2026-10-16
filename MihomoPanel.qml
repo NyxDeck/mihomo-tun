@@ -226,7 +226,9 @@ Item {
 
     Process {
         id: statusProc
-        command: [panel.pythonBin, panel.helper, "status"]
+        // 带上当前查看的组：不传的话每次刷新都会回到 PROXY 的成员，
+        // 芯片切了组也白切（节点列表永远是第一屏那份）。
+        command: [panel.pythonBin, panel.helper, "status"].concat(panel.selGroup.length > 0 ? [panel.selGroup] : [])
         environment: panel.env
         stdout: SplitParser {
             splitMarker: "\n"
@@ -287,6 +289,17 @@ Item {
                 if (r.ip) {
                     panel.ipText = r.ip;
                     panel.say(r.ip, false);
+                    return;
+                }
+                if (r.view === "group") {
+                    // 切换策略组的结果：只覆盖与当前组有关的那几个字段，
+                    // groups/service/mode 等由状态轮询维护。
+                    panel.snap = Object.assign({}, panel.snap, {
+                        group: r.group ?? "",
+                        now: r.now ?? "",
+                        nodes: r.nodes ?? [],
+                        truncated: r.truncated === true
+                    });
                     return;
                 }
                 if (r.message)
@@ -611,6 +624,14 @@ Item {
                                 font.weight: parent.parent.current ? Font.Medium : Font.Normal
                                 Layout.fillWidth: true
                                 elide: Text.ElideRight
+                            }
+                            StyledText {
+                                // 策略组也是可选项：点了就把出口切到那个组，所以得看得出来
+                                readonly property string kind: modelData.kind ?? "node"
+                                visible: kind !== "node"
+                                text: kind === "group" ? panel.tr("Group") : panel.tr("Direct")
+                                font.pixelSize: Theme.fontSizeSmall
+                                color: Theme.surfaceVariantText
                             }
                             StyledText {
                                 readonly property var value: panel.delayMap[modelData.name] ?? modelData.delay
