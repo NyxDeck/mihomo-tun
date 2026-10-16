@@ -16,10 +16,14 @@ plugin (MIT). The Python helper is reused unchanged; the UI is native to DMS.
   plugin's DIRECT rule provider — `install.sh`.
 - Start / stop `mihomo.service` from a bar pill (left click opens the panel).
 - Switch rule / global / direct mode.
-- Browse proxy groups and pick a node.
+- Browse proxy groups and pick a node — including sub-groups, which are listed
+  with a `Group` badge so `PROXY → BV → node` is two clicks instead of manual
+  config editing.
 - Check the effective exit IP.
 - Manage subscriptions and DIRECT rules (the helper edits the config through a
-  single `pkexec` authorization).
+  single `pkexec` authorization). Adding a subscription also installs a
+  same-named `select` group and wires it into `PROXY`, so its nodes appear in the
+  node list immediately — see [Subscriptions](#subscriptions).
 
 ## Requirements
 
@@ -59,6 +63,15 @@ Mihomo only serves `/ui/` when `external-ui` is set, so without that step the
 panel's *Web panel* button has nothing to open (it falls back to the hosted
 dashboard and copies the secret to your clipboard).
 
+The root helpers are installed by `scripts/install-helpers.sh`, which
+`install.sh` calls. Re-run it on its own when the panel answers *"no admin
+helper"* — that means `/usr/local/libexec/mihomo-tun` is missing, and the
+subscription page cannot write the config at all:
+
+```sh
+sudo ./scripts/install-helpers.sh
+```
+
 Plugin only (until it is in the registry):
 
 ```sh
@@ -85,6 +98,7 @@ MihomoWidget.qml       bar pill + popout
 MihomoPanel.qml        popout panel (overview / subscriptions / direct rules)
 MihomoSettings.qml     settings page
 install.sh             full mihomo install / configuration flow
+scripts/install-helpers.sh    root helpers + polkit action, on their own
 scripts/install-dashboard.sh  install metacubexd + external-ui
 scripts/mihomo-ctl.py  controller backend (one JSON object per call)
 scripts/configure-direct-rules.py    root DIRECT rule-provider setup
@@ -102,6 +116,60 @@ python3 scripts/mihomo-ctl.py select PROXY 'node name'
 python3 scripts/mihomo-ctl.py mode global
 python3 scripts/mihomo-ctl.py ip
 ```
+
+## Subscriptions
+
+A provider that no group references is invisible: its nodes exist in the config
+and nowhere in the UI. So one subscription change is three edits, and the helper
+does all of them — the provider, a managed `select` group that pulls it
+(`use: [<name>]`), and that group's membership in the `PROXY` selector:
+
+```yaml
+proxy-providers:
+  <name>:
+    type: http
+    ...
+proxy-groups:
+  # BEGIN Mihomo TUN Control subscription group: <name>
+  - name: <name>
+    type: select
+    use: [<name>]
+    proxies: [DIRECT]
+  # END Mihomo TUN Control subscription group: <name>
+  - name: PROXY
+    type: select
+    proxies: [<name>, DIRECT]     # ← 第一项，面板里一键可切
+```
+
+The BEGIN/END markers make the group removable again, and a hand-written group
+with the same name is left alone (the helper only wires it into `PROXY`).
+Deleting the subscription removes all three pieces.
+
+### Node domains that need the airport's own DNS
+
+Some airports punch their node domains out of the public DNS: every public
+resolver answers with a WAF/parking address (e.g. all `*.example-airport.com`
+→ one Aliyun WAF IP), and only the airport's own DoH endpoint returns the real
+addresses. Such a subscription looks healthy in the panel and every node times
+out.
+
+mihomo resolves *proxy server* domains through `dns.proxy-server-nameserver`
+only — a `dns.nameserver-policy` entry for the domain is **not** consulted on
+that path — so the airport DoH has to be listed there, in front of the public
+ones:
+
+```yaml
+dns:
+  proxy-server-nameserver:
+    - "https://<airport-doh-host>/dns-query/<token>#skip-cert-verify=true"
+    - https://dns.alidns.com/dns-query
+    - https://doh.pub/dns-query
+```
+
+Keep the public resolvers as a fallback for the other subscriptions, and expect
+the first ~minute after a restart to be flaky: a node domain resolved through
+the fallback gets the bogus address cached for its TTL, and the health checks
+recover once it expires.
 
 ## Security model
 
